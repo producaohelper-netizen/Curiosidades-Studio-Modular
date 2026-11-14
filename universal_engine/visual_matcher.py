@@ -29,9 +29,9 @@ class OpenCLIPMatcher:
         except ImportError as e:
             raise RuntimeError("Instale open_clip_torch e torch para associação visual real") from e
         self.torch=torch
-        self.model,self.preprocess=open_clip.create_model_and_transforms(
+        self.model,_,self.preprocess=open_clip.create_model_and_transforms(
             model_name,pretrained=pretrained,device="cpu"
-        )[:2]
+        )
         self.model.eval()
         self.tokenizer=open_clip.get_tokenizer(model_name)
 
