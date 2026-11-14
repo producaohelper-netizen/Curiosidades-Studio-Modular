@@ -60,6 +60,33 @@ jobs:
               assert len(result)==2
               assert all(-1.001<=v<=1.001 for v in result)
           PY
+      - name: Testar associacao semantica real entre dois assuntos
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from universal_engine.media_sources import search_commons
+          from universal_engine.visual_pipeline import download_commons
+          from universal_engine.visual_matcher import OpenCLIPMatcher
+          images=[]
+          with TemporaryDirectory() as tmp:
+              for name,query in [('polvo','octopus underwater'),('vulcao','volcano eruption')]:
+                  found=False
+                  for candidate in search_commons(query,limit=10):
+                      try:
+                          p=download_commons(candidate,Path(tmp)/(name+'.png'))
+                          images.append(p);found=True
+                          print(name,'license:',candidate.license_name)
+                          break
+                      except Exception as err:
+                          print('skip',name,type(err).__name__)
+                  if not found:raise SystemExit('Faltam imagens reais: '+name)
+              m=OpenCLIPMatcher()
+              scores=m.score('photo of a real octopus in the ocean',images)
+              print('Similarity octopus image vs volcano image:',scores)
+              if not scores[0]>scores[1]:
+                  raise SystemExit('OpenCLIP nao associou imagem e tema corretamente')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
