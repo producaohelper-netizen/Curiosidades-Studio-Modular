@@ -1,0 +1,24 @@
+name: Motor universal de cenas - tres dominios
+on:
+  push:
+    paths:
+      - 'universal_engine/**'
+      - 'tests/**'
+      - '.github/workflows/universal-scenes.yml'
+  workflow_dispatch:
+jobs:
+  validate_cross_topic:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verificar sintaxe
+        run: python -m compileall -q universal_engine tests
+      - name: Testar cenas de tres assuntos e erros
+        run: python -m unittest discover -s tests -v
