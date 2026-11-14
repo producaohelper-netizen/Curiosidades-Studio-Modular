@@ -29,7 +29,7 @@ jobs:
       - name: Extrair fontes versionadas
         run: unzip -oq ci/curiosidades_source.zip
       - name: Aplicar correcao de cache do renderizador
-        run: git apply --check ci/render_cache_fix.patch && git apply ci/render_cache_fix.patch
+        run: python ci/apply_renderer_patch.py
       - name: Compilar e testar modulo Go
         working-directory: CuriosidadesStudio_Modular_Fonte
         run: go test -v ./...
@@ -60,10 +60,8 @@ jobs:
       - name: Aplicar correcao do renderizador no Windows
         shell: pwsh
         run: |
-          git apply --check ci/render_cache_fix.patch
-          if ($LASTEXITCODE -ne 0) { throw 'Patch nao aplica' }
-          git apply ci/render_cache_fix.patch
-          if ($LASTEXITCODE -ne 0) { throw 'Erro no patch' }
+          python ci/apply_renderer_patch.py
+          if ($LASTEXITCODE -ne 0) { throw 'Falha no patch Python' }
       - name: Compilar seis etapas e testar etapa 02 nativa
         shell: pwsh
         run: ./windows_smoke.ps1
