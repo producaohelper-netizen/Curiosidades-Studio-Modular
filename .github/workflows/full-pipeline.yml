@@ -28,6 +28,8 @@ jobs:
           sudo apt-get install -y -qq ffmpeg
       - name: Extrair fontes versionadas
         run: unzip -oq ci/curiosidades_source.zip
+      - name: Aplicar correcao de cache do renderizador
+        run: git apply --check ci/render_cache_fix.patch && git apply ci/render_cache_fix.patch
       - name: Compilar e testar modulo Go
         working-directory: CuriosidadesStudio_Modular_Fonte
         run: go test -v ./...
@@ -55,6 +57,13 @@ jobs:
       - name: Extrair fontes versionadas
         shell: pwsh
         run: Expand-Archive ci/curiosidades_source.zip -DestinationPath . -Force
+      - name: Aplicar correcao do renderizador no Windows
+        shell: pwsh
+        run: |
+          git apply --check ci/render_cache_fix.patch
+          if ($LASTEXITCODE -ne 0) { throw 'Patch nao aplica' }
+          git apply ci/render_cache_fix.patch
+          if ($LASTEXITCODE -ne 0) { throw 'Erro no patch' }
       - name: Compilar seis etapas e testar etapa 02 nativa
         shell: pwsh
         run: ./windows_smoke.ps1
