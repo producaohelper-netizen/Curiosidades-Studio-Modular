@@ -5,6 +5,10 @@ on:
       - 'launcher/**'
       - '.github/workflows/launcher-windows.yml'
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'launcher/**'
+      - '.github/workflows/launcher-windows.yml'
 jobs:
   unit_linux:
     runs-on: ubuntu-latest
