@@ -1,0 +1,30 @@
+name: Gate audiovisual - reprovar videos deficientes
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'qa/**'
+      - '.github/workflows/quality-gate.yml'
+jobs:
+  negative_gate_test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar FFmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Teste negativo - vídeo curto e storyboard repetitivo devem REPROVAR
+        run: |
+          printf '%s' '{"scenes":[{"visual_labels":["A","B","C","D"],"script":"Teste"}]}' > story.json
+          ffmpeg -hide_banner -loglevel error -y -f lavfi -i "color=c=blue:s=640x360:r=24:d=2" -f lavfi -i "sine=frequency=330:duration=2" -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest video.mp4
+          set +e
+          python qa/quality_gate.py video.mp4 story.json > quality_result.json
+          code=$?
+          set -e
+          cat quality_result.json
+          test "$code" -eq 2
+          python -c 'import json; d=json.load(open("quality_result.json")); assert not d["passed"]; assert not d["checks"]["five_minutes"]; assert not d["checks"]["full_hd"]'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: avaliacao-gate-negativo
+          path: quality_result.json
