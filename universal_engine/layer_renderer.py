@@ -11,6 +11,7 @@ from io import BytesIO
 import math, subprocess, wave, json
 from .scenespec import validate, motion
 from .camera import apply_camera
+from .sprites import select_frame
 
 class RenderError(RuntimeError):
     pass
@@ -41,6 +42,11 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
             continue
         transform=poses[name]
         if float(transform.get("opacity",1))<=0:continue
+        sheet=actor.get("sprite")
+        if sheet is not None:
+            img=select_frame(img,time_sec,rows=sheet["rows"],columns=sheet["columns"],
+                             frames=sheet["frames"],pose_fps=float(sheet.get("fps",8)),
+                             loop=bool(sheet.get("loop",True)))
         layer=img.convert("RGBA")
         scale=float(transform["scale"])*float(actor.get("size",.28))
         px=max(1,int(w*scale))
