@@ -10,6 +10,7 @@ from pathlib import Path
 from io import BytesIO
 import math, subprocess, wave, json
 from .scenespec import validate, motion
+from .camera import apply_camera
 
 class RenderError(RuntimeError):
     pass
@@ -69,7 +70,7 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
                 radius=max(2,w//150)
                 d.ellipse((ex-radius,ey-radius,ex+radius,ey+radius),
                           fill="#4d3b78" if "ink" in str(transform["effect"]) else "#eac959")
-    return canvas.convert("RGB")
+    return apply_camera(canvas.convert("RGB"),scene,time_sec,poses)
 
 def audio_duration(path:str|Path) -> float:
     """PCM WAV only, preserving exact recorded speech duration."""
