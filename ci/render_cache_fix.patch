@@ -1,0 +1,47 @@
+--- a/CuriosidadesStudio_Modular_Fonte/assets/render.py
++++ b/CuriosidadesStudio_Modular_Fonte/assets/render.py
+@@ -1,7 +1,7 @@
+ """Curiosidades Studio 2D — original animated explainers, scene-specific action choreography.
+ No stock downloads and no third-party copyrighted art. Narration is mandatory in release mode.
+ """
+-import os,sys,json,math,random,subprocess,argparse,re,wave,struct,time
++import os,sys,json,math,random,subprocess,argparse,re,wave,struct,time,hashlib
+ from pathlib import Path
+ from PIL import Image,ImageDraw,ImageFont
+ W,H=960,540
+@@ -349,6 +349,27 @@
+     ap=argparse.ArgumentParser();ap.add_argument('--story',required=True);ap.add_argument('--output',required=True);ap.add_argument('--piper',default='');ap.add_argument('--model',default='');ap.add_argument('--ffmpeg',default='ffmpeg');ap.add_argument('--ffprobe',default='ffprobe');ap.add_argument('--quality',choices=['720','1080'],default='720');ap.add_argument('--test',action='store_true');ap.add_argument('--limit',type=int,default=0)
+     a=ap.parse_args();st=json.loads(Path(a.story).read_text('utf8'));out=Path(a.output);out.mkdir(parents=True,exist_ok=True);work=out/'producao';work.mkdir(exist_ok=True)
+     scenes=st['scenes'][:a.limit or None];fps=12;clips=[];subs=[];offset=0
++    # Re-render whenever narrative, visual directions or output profile changes.
++    # Old behavior silently reused stale MP4s (even after the user changed the script).
++    manifest_path=work/'render_cache_manifest.json'
++    try:old_cache=json.loads(manifest_path.read_text(encoding='utf8'))
++    except (OSError,ValueError):old_cache={}
++    new_cache={}
++    for chapter_index,chapter in enumerate(scenes):
++        payload=json.dumps({'scene':chapter,'art':st.get('art'),'quality':a.quality,
++                            'fps':fps,'renderer':'scene-cache-v2'},sort_keys=True,ensure_ascii=False)
++        scene_hash=hashlib.sha256(payload.encode('utf8')).hexdigest()
++        new_cache[str(chapter_index)]=scene_hash
++        if old_cache.get(str(chapter_index))!=scene_hash:
++            for stale in work.glob(f'{chapter_index:02}_*.mp4'):stale.unlink(missing_ok=True)
++            (work/f'c_{chapter_index}.mp4').unlink(missing_ok=True)
++            # Voice is retained only when the words of the scene are unchanged.
++            old_script_cache=old_cache.get('script_'+str(chapter_index))
++            text_hash=hashlib.sha256(chapter.get('script','').encode('utf8')).hexdigest()
++            if old_script_cache is not None and old_script_cache!=text_hash:
++                (work/f'voz_{chapter_index:02}.wav').unlink(missing_ok=True)
++        new_cache['script_'+str(chapter_index)]=hashlib.sha256(chapter.get('script','').encode('utf8')).hexdigest()
++    # Write the cache manifest only after all scenes successfully render below.
+     for ix,sc in enumerate(scenes):
+         wav=work/f'voz_{ix:02}.wav'
+         if not wav.exists() or wav.stat().st_size<4000:
+@@ -398,6 +419,7 @@
+     actual=ffprobe_duration(a.ffprobe,final)
+     if abs(actual-offset)>5:raise RuntimeError(f'Erro de duração: {actual:.1f}s x {offset:.1f}s')
+     if not a.test and final.stat().st_size<100000:raise RuntimeError('Vídeo final inesperadamente pequeno')
++    manifest_path.write_text(json.dumps(new_cache,indent=2),encoding='utf8')
+     event(f'Pronto: vídeo com {len(scenes)*4} cenas encenadas, {actual:.0f} segundos',100)
+     print(json.dumps({'done':True,'path':str(final),'duration':round(actual,1)},ensure_ascii=False),flush=True)
+ if __name__=='__main__':
