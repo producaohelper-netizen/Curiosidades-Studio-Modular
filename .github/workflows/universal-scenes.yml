@@ -18,6 +18,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Instalar Pillow para previsualizacao
+        run: python -m pip install 'Pillow>=11,<13'
       - name: Verificar sintaxe
         run: python -m compileall -q universal_engine tests
       - name: Testar cenas de tres assuntos e erros
