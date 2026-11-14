@@ -1,12 +1,12 @@
 import tempfile,unittest,json
 from pathlib import Path
 from universal_engine.trends import parse_rss,traffic,top_five,save_results,Trend
-RSS=b"""<?xml version="1.0"?><rss xmlns:ht="https://trends.google.com/trending/rss"><channel>
+RSS="""<?xml version="1.0"?><rss xmlns:ht="https://trends.google.com/trending/rss"><channel>
 <item><title>cnj</title><ht:approx_traffic>100K+</ht:approx_traffic><pubDate>Sat</pubDate></item>
 <item><title>El Niño</title><ht:approx_traffic>50K+</ht:approx_traffic><pubDate>Sat</pubDate></item>
 <item><title>Eclipse lunar</title><ht:approx_traffic>20K+</ht:approx_traffic><pubDate>Sat</pubDate></item>
 <item><title>Atlético X Clube</title><ht:approx_traffic>200K+</ht:approx_traffic><pubDate>Sat</pubDate></item>
-</channel></rss>"""
+</channel></rss>""".encode("utf8")
 class TrendTests(unittest.TestCase):
  def test_volume(self):
   self.assertEqual(traffic("50K+"),50000)
