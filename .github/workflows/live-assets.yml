@@ -1,0 +1,68 @@
+name: Provedores reais - Commons e OpenCLIP
+on:
+  push:
+    paths:
+      - '.github/workflows/live-assets.yml'
+      - 'universal_engine/media_sources.py'
+      - 'universal_engine/visual_matcher.py'
+  workflow_dispatch:
+jobs:
+  live_asset_lookup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar ferramentas locais de matching
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'Pillow>=11,<13' open_clip_torch
+      - name: Testar consulta Wikimedia e licença
+        run: |
+          python - <<'PY'
+          from universal_engine.media_sources import search_commons
+          from pathlib import Path
+          import json
+          candidates=[]
+          for query in ('octopus underwater', 'Earth from space', 'volcano eruption'):
+              try:
+                  candidates=search_commons(query,limit=15)
+              except Exception as exc:
+                  print('Erro Wikimedia:',type(exc).__name__,exc)
+              if candidates:
+                  break
+          print('Imagens elegíveis:',len(candidates))
+          if not candidates:
+              raise SystemExit('Nenhuma imagem licenciada acessível — teste real reprovado')
+          c=candidates[0]
+          print('Primeira licença:',c.license_name)
+          assert c.license_verified and c.license_url and c.page_url and c.attribution
+          Path('live-commons.json').write_text(json.dumps({
+              'title':c.title,'url':c.image_url,'license':c.license_name,
+              'attribution':c.attribution},ensure_ascii=False,indent=2))
+          PY
+      - name: Executar OpenCLIP real em imagem local
+        run: |
+          python - <<'PY'
+          import tempfile
+          from pathlib import Path
+          from PIL import Image
+          from universal_engine.visual_matcher import OpenCLIPMatcher
+          with tempfile.TemporaryDirectory() as d:
+              a=Path(d)/'blue.png';b=Path(d)/'orange.png'
+              Image.new('RGB',(128,128),'blue').save(a)
+              Image.new('RGB',(128,128),'orange').save(b)
+              m=OpenCLIPMatcher()
+              result=m.score('a plain solid blue square',[a,b])
+              print('Similaridade imagem azul x laranja:',result)
+              assert len(result)==2
+              assert all(-1.001<=v<=1.001 for v in result)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-provider-test-report
+          path: live-commons.json
+          retention-days: 3
