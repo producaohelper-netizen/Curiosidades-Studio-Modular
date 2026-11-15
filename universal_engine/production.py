@@ -172,29 +172,34 @@ def prepare_scene_assets(scene, work: Path, settings: Settings, *,
     if not result.license_name and result.source != "local-comfyui":
         raise ProductionError(f"{scene_id}: imagem sem licença rastreável")
     sprites = {}
+    # In CPU-only mode, remove the photographed subject from EVERY backdrop,
+    # even when the reusable sprite was cached by an earlier scene.
+    if result.source=="Wikimedia Commons" and len(scene["actors"])==1 and not settings.sprite_workflow:
+        actor=scene["actors"][0]
+        dst=asset_path(work/"characters",actor["asset_id"])
+        background=work/"scene_backgrounds"/(scene_id+".png")
+        if not background.is_file():
+            temporary=dst if not dst.is_file() else work/"scene_backgrounds"/(scene_id+"_discard.png")
+            extract_for_scene(scene,result.file,temporary,background)
+            if temporary!=dst:temporary.unlink(missing_ok=True)
+        result.file=str(background)
+        result.reason += "; fundo extraído da fotografia; revisar contornos"
+        result.review_required=True
     for actor in scene["actors"]:
-        dst = asset_path(work / "characters", actor["asset_id"])
+        dst=asset_path(work/"characters",actor["asset_id"])
         if not dst.is_file():
             if settings.sprite_workflow:
-                produce_sprite(actor, work / "characters", settings.sprite_workflow)
-            elif result.source=="Wikimedia Commons" and len(scene["actors"])==1:
-                background=work/"scene_backgrounds"/(scene_id+".png")
-                extracted=extract_for_scene(scene, result.file, dst, background)
-                result.review_required=True
-                result.reason += "; foreground extraído por IA; " + extracted["warning"]
-                # Use the inpainted backdrop, not the original with a ghost subject.
-                original_background=Path(result.file)
-                result.file=str(background)
+                produce_sprite(actor,work/"characters",settings.sprite_workflow)
             else:
                 raise ProductionError(
-                    f"{scene_id}: sem sprite RGBA adequado para '{actor['asset_id']}'; "
-                    "ative ComfyUI ou use uma cena de sujeito único licenciada"
+                    f"{scene_id}: ator {actor['asset_id']} sem sprite RGBA "
+                    "e sem extração confiável; configure ComfyUI"
                 )
         from PIL import Image
         with Image.open(dst) as image:
-            if image.mode != "RGBA" or not image.getchannel("A").getextrema()[0] < 255:
+            if image.mode!="RGBA" or image.getchannel("A").getextrema()[0]>=255:
                 raise ProductionError(f"{scene_id}: sprite {dst.name} sem transparência")
-        sprites[actor["asset_id"]] = dst
+        sprites[actor["asset_id"]]=dst
     return Path(result.file), sprites, result
 
 
