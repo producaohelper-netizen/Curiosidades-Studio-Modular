@@ -59,6 +59,7 @@ Cada cena precisa de:
 - "search_terms_en": STRING contendo 2-5 palavras-chave EM INGLÊS para Wikimedia Commons;
 - "setting": objeto com campo "kind" ("space","underwater","workshop","forest", etc.);
 - "visual_fact": afirmação factual que a ilustração representa;
+- "callout": 1 a 4 palavras presentes na fala, para rótulo discreto na tela;
 - "actors": array de 1-4 objetos {{id,kind,asset_id,x,y}},
   kind em {sorted(KINDS)}. Mesmo elemento recorrente conserva asset_id entre cenas.
   IDENTIDADES DE LOTES ANTERIORES: {registry}
@@ -87,6 +88,7 @@ Falas (não altere nem reescreva; serão inseridas pelo programa):
                "actors":raw.get("actors",[]),
                "timeline":raw.get("timeline",[]),
                "visual_fact":raw.get("visual_fact",""),
+               "callout":raw.get("callout",""),
                "visual_query_en":raw.get("visual_query_en",""),
                "search_terms_en":raw.get("search_terms_en","")}
         if len(scene["visual_query_en"].strip())<12:
