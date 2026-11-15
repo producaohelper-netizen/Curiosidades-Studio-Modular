@@ -37,6 +37,19 @@ class PlannerTests(unittest.TestCase):
    return x
   with self.assertRaises(PlanningError):
    plan_batch(["O polvo foge"],generator=bad)
+ def test_short_exclamation_joins_following_scene(self):
+  phrase="Uau! O polvo muda de cor e se esconde entre as pedras do fundo do mar."
+  chunks=split_narration(phrase,max_words=15)
+  self.assertEqual(" ".join(chunks),phrase)
+  self.assertEqual(len(chunks),1)
+ def test_ollama_receives_duration_for_each_scene(self):
+  def check_context(prompt):
+   import json
+   data=json.loads(prompt.split("Falas (não altere nem reescreva; serão inseridas pelo programa):")[-1].strip())
+   self.assertIn("duration_seconds",data[0])
+   return mock_model(prompt)
+  plan_batch(["O polvo foge do tubarão quando percebe o perigo."],
+             generator=check_context)
  def test_empty_story(self):
   with self.assertRaises(PlanningError):split_narration("")
 if __name__=="__main__":unittest.main()
