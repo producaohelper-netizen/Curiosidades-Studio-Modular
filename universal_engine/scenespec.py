@@ -69,6 +69,17 @@ def validate(scene: dict) -> dict:
                 raise SceneError("approach exige towards valido")
             if step.get("action") in ("follow", "orbit") and step.get("towards") not in ids:
                 raise SceneError("follow exige towards valido")
+        if step["action"] == "camera_push":
+            if target is not None and target not in ids:
+                raise SceneError("camera_push referencia ator desconhecido")
+            zoom = step.get("zoom", 1.25)
+            if not isinstance(zoom, (int, float)) or not math.isfinite(zoom) or not 1 <= zoom <= 1.8:
+                raise SceneError("zoom da camera deve estar entre 1 e 1.8")
+        if step["action"] == "camera_pan":
+            for coord in ("to_x", "to_y"):
+                value = step.get(coord, 0.5)
+                if not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
+                    raise SceneError("camera_pan exige coordenadas entre 0 e 1")
         if "duration" in step and (not isinstance(step["duration"], (int, float)) or
                                    not math.isfinite(step["duration"]) or step["duration"] <= 0 or at + step["duration"] > duration + 0.001):
             raise SceneError("duracao de acao invalida")
