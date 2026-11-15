@@ -51,7 +51,7 @@ func run(base string)error{
  configPath:=filepath.Join(root,"runtime_configuration.json")
  content,err:=os.ReadFile(configPath)
  if err!=nil{return fmt.Errorf("configuração de runtime ausente: %w",err)}
- var settings struct { Piper string `json:"piper"` }
+ var settings struct { Piper string `json:"piper"`; FFmpegBin string `json:"ffmpeg_bin_dir"` }
  if err=json.Unmarshal(content,&settings);err!=nil || settings.Piper=="" {
   return fmt.Errorf("Piper não foi configurado corretamente")
  }
@@ -63,6 +63,7 @@ func run(base string)error{
  if wf:=os.Getenv("CSTUDIO_SPRITE_WORKFLOW");wf!=""{args=append(args,"--sprite-workflow",wf)}
  if voice:=os.Getenv("CSTUDIO_PIPER");voice!=""{args=append(args,"--piper",voice)}
  if llm:=os.Getenv("CSTUDIO_OLLAMA_MODEL");llm!=""{args=append(args,"--llm",llm)}
+ if settings.FFmpegBin!="" { env=append(env,"PATH="+settings.FFmpegBin+string(os.PathListSeparator)+os.Getenv("PATH")) }
  cmd:=exec.Command(py,args...)
  cmd.Dir=base;cmd.Env=env
  cmd.Stdout=os.Stdout;cmd.Stderr=os.Stderr
