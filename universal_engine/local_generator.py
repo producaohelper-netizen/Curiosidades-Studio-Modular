@@ -44,6 +44,8 @@ def prepare_workflow(template_path, prompt, seed):
     # JSON-encode prompt inside the JSON string context to prevent injection
     safe_prompt=json.dumps(prompt,ensure_ascii=False)[1:-1]
     template=template.replace("{{PROMPT}}",safe_prompt)
+    # KSampler requires an integer seed, not a JSON string.
+    template=template.replace('"{{SEED}}"',"{{SEED}}")
     template=template.replace("{{SEED}}",str(int(seed)))
     try:
         workflow=json.loads(template)
