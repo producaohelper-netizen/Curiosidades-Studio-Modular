@@ -11,7 +11,7 @@ from io import BytesIO
 import math, subprocess, wave, json
 from .scenespec import validate, motion
 from .camera import apply_camera
-from .sprites import select_frame
+from .expressive_poses import expressive_frame
 from .effects import paint_effect,paint_reaction
 from .deformation import organic_sway, organic_swim
 from .environment_motion import draw_environment
@@ -50,9 +50,10 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
         if float(transform.get("opacity",1))<=0:continue
         sheet=actor.get("sprite")
         if sheet is not None:
-            img=select_frame(img,time_sec,rows=sheet["rows"],columns=sheet["columns"],
-                             frames=sheet["frames"],pose_fps=float(sheet.get("fps",8)),
-                             loop=bool(sheet.get("loop",True)))
+            img=expressive_frame(img,time_sec,rows=sheet["rows"],columns=sheet["columns"],
+                                 frames=sheet["frames"],fps=float(sheet.get("fps",8)),
+                                 loop=bool(sheet.get("loop",True)),
+                                 hold_first=float(sheet.get("hold_first",0)))
         source=img.convert("RGBA")
         scale=float(transform["scale"])*float(actor.get("size",.28))
         px=max(1,int(w*scale))
