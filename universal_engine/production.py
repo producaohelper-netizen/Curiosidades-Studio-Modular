@@ -24,6 +24,7 @@ from .layer_renderer import render_clip
 from .scenespec import validate
 from .sprite_factory import produce_sprite
 from .photo_layers import extract_for_scene
+from .foreground_match import verify_foreground
 
 
 class ProductionError(RuntimeError):
@@ -181,6 +182,13 @@ def prepare_scene_assets(scene, work: Path, settings: Settings, *,
         if not background.is_file():
             temporary=dst if not dst.is_file() else work/"scene_backgrounds"/(scene_id+"_discard.png")
             extract_for_scene(scene,result.file,temporary,background)
+            try:
+                verification=verify_foreground(actor,scene,temporary)
+                result.reason += "; OpenCLIP do recorte: "+str(round(verification["score"],3))
+            except Exception:
+                background.unlink(missing_ok=True)
+                if temporary!=dst:temporary.unlink(missing_ok=True)
+                raise
             if temporary!=dst:temporary.unlink(missing_ok=True)
         result.file=str(background)
         result.reason += "; fundo extraído da fotografia; revisar contornos"
