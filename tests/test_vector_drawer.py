@@ -85,6 +85,30 @@ class VectorDrawingTests(unittest.TestCase):
         parsed,_=local_instructions({"id":"planet earth","kind":"planet"},
                                     requester=fake_ai)
         self.assertEqual(len(parsed["elements"]),8)
+    def test_invalid_first_attempt_gets_correction_prompt(self):
+        from universal_engine.vector_drawer import local_instructions
+        calls=[]
+        bad={"e":[{"t":"ellipse","b":[90,90,90,90],
+                   "f":"#F0C050","s":"#111A22","w":3} for _ in range(8)]}
+        good={"e":[{"t":"ellipse","b":[80,80,330,300],
+                    "f":"#F0C050","s":"#111A22","w":3} for _ in range(8)]}
+        def fake(payload):
+            calls.append(payload["prompt"])
+            return {"response":json.dumps(good if len(calls)>1 else bad)}
+        result,_=local_instructions({"id":"planet earth","kind":"planet"},requester=fake)
+        self.assertEqual(len(result["elements"]),8)
+        self.assertEqual(len(calls),2)
+        self.assertIn("CORRIJA O DESENHO",calls[1])
+    def test_all_invalid_attempts_raise_error(self):
+        from universal_engine.vector_drawer import local_instructions
+        calls=[]
+        def bad_response(payload):
+            calls.append(payload["prompt"])
+            return {"response":json.dumps({"e":[{"t":"ellipse","b":[0,0,0,0],
+                "f":"#F0C050","s":"#111A22","w":3} for _ in range(8)]})}
+        with self.assertRaises(VectorArtError):
+            local_instructions({"id":"octopus","kind":"animal"},requester=bad_response)
+        self.assertEqual(len(calls),3)
     def test_disallow_unrecognized_and_unsafe_instructions(self):
         bad=drawing()
         bad["elements"][0]["shape"]="script"
