@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from universal_engine.bootstrap import (
-    BootstrapError, check_runtime, download_model, setup, missing_packages,
+    BootstrapError, check_runtime, download_model, setup, missing_packages, find_ffmpeg_bin,
 )
 
 class BootstrapTests(unittest.TestCase):
@@ -18,6 +18,16 @@ class BootstrapTests(unittest.TestCase):
             def fail_request(*args,**kwargs):
                 raise AssertionError("Cached files should not be downloaded")
             self.assertEqual(download_model(model,opener=fail_request),model)
+    def test_discovers_previous_ffmpeg_tools_directory(self):
+        with tempfile.TemporaryDirectory() as d:
+            folder=Path(d)/"tools"/"ffmpeg"/"bin"
+            folder.mkdir(parents=True)
+            import os
+            for name in (("ffmpeg.exe","ffprobe.exe") if os.name=="nt" else ("ffmpeg","ffprobe")):
+                (folder/name).write_bytes(b"fixture")
+            with patch("universal_engine.bootstrap.shutil.which",return_value=None):
+                self.assertEqual(find_ffmpeg_bin(Path(d)/"models"/"voice.onnx"),
+                                 str(folder))
     def test_invalid_voice_download_is_atomic(self):
         with tempfile.TemporaryDirectory() as temp:
             model=Path(temp)/"pt_BR-faber-medium.onnx"
