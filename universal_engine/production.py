@@ -258,16 +258,8 @@ def run(settings: Settings, *, story_writer=write_story,
         story = story_writer(topic["title"], settings.llm)
         atomic_json(root/"roteiro.json", story)
         stage("script", words=story["words"])
-        storyboard = planner(story["narration"], max_words=15)
-        scenes = storyboard["scenes"]
-        if not 40 <= len(scenes) <= 100:
-            raise ProductionError("Storyboard precisa de 40–100 cenas; "
-                                  f"recebeu {len(scenes)}")
-        for scene in scenes:
-            validate(scene)
-        identity=check_character_consistency(scenes)
-        atomic_json(root/"storyboard.json", storyboard)
-        stage("visual_plan", scenes=len(scenes), **identity)
+        # Detect the art engine BEFORE planning. CPU/photo fallback can only
+        # isolate one reliable actor per scene.
         if settings.auto_comfy and (not settings.comfy_workflow or not settings.sprite_workflow):
             try:
                 chosen=auto_workflow(root/"model_comfy_api.json")
@@ -277,6 +269,20 @@ def run(settings: Settings, *, story_writer=write_story,
             except Exception as exc:
                 stage("comfy_unavailable", note=str(exc)[:220],
                       fallback="licensed-photos + rembg for one-actor scenes")
+        if planner is plan_script:
+            storyboard = planner(story["narration"], max_words=15,
+                                 max_actors=4 if settings.sprite_workflow else 1)
+        else:
+            storyboard = planner(story["narration"], max_words=15)
+        scenes = storyboard["scenes"]
+        if not 40 <= len(scenes) <= 100:
+            raise ProductionError("Storyboard precisa de 40–100 cenas; "
+                                  f"recebeu {len(scenes)}")
+        for scene in scenes:
+            validate(scene)
+        identity=check_character_consistency(scenes)
+        atomic_json(root/"storyboard.json", storyboard)
+        stage("visual_plan", scenes=len(scenes), **identity)
         clips = []
         sound_total = 0.
         asset_log = []
