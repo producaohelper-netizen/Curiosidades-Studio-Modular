@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from PIL import Image
 from universal_engine.vector_drawer import (
-    VectorArtError, rasterize, generate_actor, validate_art
+    VectorArtError, rasterize, generate_actor, validate_art, normalize_simple_shapes
 )
 
 def drawing():
@@ -46,6 +46,34 @@ class VectorDrawingTests(unittest.TestCase):
             generate_actor(actor,dest,requester=ai)
             self.assertEqual(calls,["qwen2.5:7b"])
             self.assertTrue(dest.with_suffix(".json").is_file())
+    def test_strict_short_model_forms_allow_inverted_bbox(self):
+        raw={"e":[{"t":"ellipse","b":[400,390,80,90],
+                   "f":"#FFCC33","s":"#102030","w":4}
+                  for _ in range(8)]}
+        result=normalize_simple_shapes(raw)
+        self.assertEqual(result["elements"][0]["bbox"],[80,90,400,390])
+        with tempfile.TemporaryDirectory() as folder:
+            path=rasterize(result,Path(folder)/"normalized.png")
+            self.assertTrue(path.is_file())
+    def test_invalid_optional_coordinates_are_never_faked(self):
+        raw={"e":[{"t":"ellipse","b":[0,0,100,100],
+                   "f":"#FFCC33","s":"#102030","w":4}
+                  for _ in range(8)]}
+        raw["e"][2].pop("b")
+        with self.assertRaises(VectorArtError):normalize_simple_shapes(raw)
+    def test_model_short_schema_conversion(self):
+        response={"e":[{"t":"ellipse","b":[100,80,320,280],
+                        "f":"#FFCC33","s":"#102030","w":4}
+                       for _ in range(8)]}
+        def fake_ai(payload):
+            self.assertEqual(payload["format"]["properties"]["e"]["minItems"],8)
+            required=payload["format"]["properties"]["e"]["items"]["required"]
+            self.assertEqual(set(required),{"t","b","f","s","w"})
+            return {"response":json.dumps(response)}
+        from universal_engine.vector_drawer import local_instructions
+        parsed,_=local_instructions({"id":"planet earth","kind":"planet"},
+                                    requester=fake_ai)
+        self.assertEqual(len(parsed["elements"]),8)
     def test_disallow_unrecognized_and_unsafe_instructions(self):
         bad=drawing()
         bad["elements"][0]["shape"]="script"
