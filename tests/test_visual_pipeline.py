@@ -64,5 +64,38 @@ class PipelineTests(unittest.TestCase):
  def test_scene_requires_prompt(self):
   with self.assertRaises(AssetPipelineError):
    build_scene_asset({"scene_id":"bad"},self.temp.name)
+ def test_cached_photo_never_reused_in_cartoon_mode(self):
+  # Earlier photo acceptance must not bypass the new style gate.
+  class Match:
+   def score(self,query,files):
+    if "flat two dimensional cartoon" in query:return [.08]
+    if "documentary photograph" in query:return [.44]
+    return [.41]
+  def only_first(query,limit):return [ITEM]
+  photo_scene={**SCENE,"visual_style":"photo"}
+  cartoon_scene={**SCENE,"visual_style":"cartoon"}
+  first=build_scene_asset(photo_scene,self.temp.name,matcher=Match(),
+                          commons_search=only_first,downloader=self.fake_download)
+  self.assertIsNotNone(first.file)
+  second=build_scene_asset(cartoon_scene,self.temp.name,matcher=Match(),
+                           commons_search=only_first,downloader=self.fake_download)
+  self.assertIsNone(second.file,"Foto antiga não pode passar por cartoon")
+ def test_comfy_prompt_requires_cartoon_style(self):
+  class FalseMatcher:
+   def score(self,query,files):return [.01]
+  class Result:
+   def __init__(self,file):self.file=str(file)
+  observed=[]
+  def fake_gen(prompt,workflow,file):
+   observed.append(prompt)
+   Image.new("RGB",(120,100),"orange").save(file)
+   return Result(file)
+  scene={**SCENE,"visual_style":"cartoon"}
+  r=build_scene_asset(scene,self.temp.name,matcher=FalseMatcher(),
+      commons_search=lambda q,limit:[],comfy_workflow="workflow.json",
+      generator=fake_gen)
+  self.assertEqual(r.visual_style,"cartoon")
+  self.assertIn("NOT a photograph",observed[0])
+
 if __name__=="__main__":
  unittest.main()
