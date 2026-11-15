@@ -48,7 +48,8 @@ def plan_batch(narrations:list[str], start_index:int=0, generator=None,
                known_actors:dict|None=None,max_actors:int=4)->list[dict]:
     if not narrations or len(narrations)>5:raise PlanningError("Lote deve ter 1 a 5 falas")
     if not 1<=max_actors<=4:raise PlanningError("max_actors inválido")
-    context=json.dumps([{"index":start_index+i,"narration":line}
+    context=json.dumps([{"index":start_index+i,"narration":line,
+                         "duration_seconds":max(2.0,min(55.0,round(len(line.split())/2.5,2)))}
                         for i,line in enumerate(narrations)],ensure_ascii=False)
     known_actors=known_actors if known_actors is not None else {}
     registry=json.dumps(known_actors,ensure_ascii=False)
@@ -69,7 +70,9 @@ Cada cena precisa de:
 - "timeline": array ordenado cronologicamente de 2-5 ações.
 Cada ação tem at (segundos a partir de zero), action em {sorted(ACTIONS)},
 target = id de ator existente, e outros campos necessários (to_x, to_y,
-duration, towards, effect, emotion). Distribua ações dentro de no máximo 7 segundos.
+duration, towards, effect, emotion). Cada ação DEVE ter at menor que
+'duration_seconds' indicado para a fala correspondente; cada duração
+deve terminar antes do fim dessa fala. Não deixe ações depois da narração.
 Enquadramentos claros, expressões, humor visual leve, nunca imagens decorativas.
 SEM texto explicativo ao redor; apenas JSON.
 Falas (não altere nem reescreva; serão inseridas pelo programa):
