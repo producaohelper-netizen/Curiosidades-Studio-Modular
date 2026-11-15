@@ -84,6 +84,17 @@ class SceneSpecTests(unittest.TestCase):
   a=motion(s,.1)["terra"]
   b=motion(s,3.9)["terra"]
   self.assertGreater(abs(a["x"]-b["x"]),.4)
+ def test_approach_respects_side_and_gap(self):
+  s=copy.deepcopy(SCENES[0])
+  shark=motion(s,1.3)["tubarao"]["x"]
+  octopus=motion(s,1.3)["polvo"]["x"]
+  self.assertGreaterEqual(shark-octopus,.2)
+  reverse=copy.deepcopy(s)
+  reverse["actors"][0]["x"]=.8
+  reverse["actors"][1]["x"]=.2
+  shark=motion(reverse,1.3)["tubarao"]["x"]
+  octopus=motion(reverse,1.3)["polvo"]["x"]
+  self.assertLessEqual(shark-octopus,-.2)
  def test_orbit_unknown_target_is_rejected(self):
   s=copy.deepcopy(SCENES[1])
   s["timeline"]=[{"at":0,"action":"orbit","target":"terra","towards":"missing"}]
