@@ -1,0 +1,32 @@
+name: Regressao editorial e camera
+on:
+  push:
+    paths:
+      - 'qa/**'
+      - 'universal_engine/scenespec.py'
+      - 'tests/test_editorial_integrity.py'
+      - 'tests/test_video_integrity_audit.py'
+      - 'tests/test_camera_timing_regressions.py'
+      - 'tests/test_camera_parameter_validation.py'
+      - '.github/workflows/editorial-camera-regression.yml'
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Executar testes editoriais e de camera
+        run: |
+          python -m unittest -v \
+            tests/test_editorial_integrity.py \
+            tests/test_video_integrity_audit.py \
+            tests/test_camera_timing_regressions.py \
+            tests/test_camera_parameter_validation.py
+      - name: Validar sintaxe dos modulos
+        run: |
+          python -m py_compile qa/editorial_integrity.py qa/episode_gate.py qa/video_integrity_audit.py universal_engine/scenespec.py
