@@ -13,6 +13,13 @@ class EnvironmentMotionTests(unittest.TestCase):
                 later=make(3.1)
                 self.assertIsNotNone(ImageChops.difference(start,later).getbbox())
                 self.assertEqual(make(3.1).tobytes(),later.tobytes())
+    def test_underwater_light_beams_keep_transparency(self):
+        base=Image.new("RGBA",(320,180),(12,52,83,255))
+        out=draw_environment(base,"underwater",1.4,"beam")
+        rgb=out.convert("RGB")
+        bright=sum(1 for r,g,b in rgb.getdata() if r>180 and g>185 and b>185)
+        self.assertLess(bright/(320*180),.001,
+                        "Faixas brancas opacas escondem os animais")
     def test_unknown_setting_never_changes_frame(self):
         base=Image.new("RGBA",(320,180),(100,50,20,255))
         out=draw_environment(base.copy(),"unknown",2,"scene")
