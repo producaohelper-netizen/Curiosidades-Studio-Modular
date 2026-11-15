@@ -111,20 +111,16 @@ def local_instructions(actor,model="qwen2.5:7b",requester=None):
            actor.get("label") or actor.get("display_name") or actor.get("id") or "")
     if len(str(label))<3:raise VectorArtError("Personagem sem descrição")
     prompt=(
-        "Você é ilustrador de animação infantil 2D. Desenhe um sujeito isolado "
-        "com identidade fácil de reconhecer, proporções expressivas e traço "
-        "contínuo, para vídeo educativo. NÃO desenhe cenário, fundo, texto ou "
-        "marcas. O plano 512x512 é TRANSPARENTE e só o sujeito é colorido. "
-        "Responda SOMENTE JSON com chave elements: array de 10 a 20 formas; "
-        "shape ellipse|rectangle|rounded_rectangle|polygon|line|arc; "
-        "bbox=[x1,y1,x2,y2] ou points=[[x,y],...]; "
-        "fill e stroke cores hex #RRGGBB; width número de 1 a 14. "
-        "Para arc inclua start/end, para rounded_rectangle radius. "
-        "Use linhas grossas escuras e cores vivas. Faça uma silhueta "
-        "original, cabeça/olhos/partes reconhecíveis, membros separados quando "
-        "apropriado, linhas fluidas. Nada de círculo genérico ou legenda. "
-        "Desenhe ESPECIFICAMENTE: "+str(label)+". "
-        "Categoria: "+str(actor.get("kind","object"))+"."
+        "Crie uma ilustração vetorial 2D infantil ORIGINAL em fundo transparente. "
+        "Somente um sujeito identificável, sem texto ou cenário: "+str(label)+". "
+        "Use 8 a 14 formas, contorno escuro grosso, cores vivas. "
+        "Responda JSON compacto com e: lista de formas. "
+        "Cada forma usa t=ellipse|rectangle|polygon|line, "
+        "b=[x1,y1,x2,y2] para ellipse/rectangle, "
+        "p=[[x,y],...] para polygon/line; "
+        "f=cor de preenchimento #RRGGBB, s=contorno #RRGGBB, w=largura. "
+        "Coordenadas de 0 a 512. Monte corpo, rosto e detalhes em camadas. "
+        "Não desenhe fundo. Categoria "+str(actor.get("kind","object"))+"."
     )
     if requester is None:
         def requester(payload):
@@ -132,8 +128,18 @@ def local_instructions(actor,model="qwen2.5:7b",requester=None):
                         data=json.dumps(payload).encode("utf8"),
                         headers={"Content-Type":"application/json"})
             with urlopen(req,timeout=420) as reply:return json.load(reply)
-    payload={"model":model,"prompt":prompt,"format":"json","stream":False,
-             "options":{"temperature":.15,"num_predict":1800}}
+    item_schema={"type":"object","properties":{
+       "t":{"type":"string","enum":["ellipse","rectangle","polygon","line"]},
+       "b":{"type":"array","items":{"type":"number"},"minItems":4,"maxItems":4},
+       "p":{"type":"array","items":{"type":"array","items":{"type":"number"},
+           "minItems":2,"maxItems":2},"minItems":2,"maxItems":25},
+       "f":{"type":"string"},"s":{"type":"string"},"w":{"type":"number"}
+    },"required":["t"]}
+    schema={"type":"object","properties":{
+        "e":{"type":"array","items":item_schema,"minItems":8,"maxItems":14}},
+        "required":["e"]}
+    payload={"model":model,"prompt":prompt,"format":schema,"stream":False,
+             "options":{"temperature":.15,"num_predict":2300}}
     try:
         raw=requester(payload)
     except (OSError,KeyError,TypeError,ValueError) as exc:
@@ -144,6 +150,11 @@ def local_instructions(actor,model="qwen2.5:7b",requester=None):
         preview=str(raw.get('response',''))[:160] if isinstance(raw,dict) else ''
         reason=str(raw.get('done_reason','?')) if isinstance(raw,dict) else '?'
         raise VectorArtError('JSON inválido; done_reason='+reason+'; início='+repr(preview)+'; erro='+str(exc)) from exc
+    if isinstance(data,dict) and "e" in data:
+        aliases={"t":"shape","b":"bbox","p":"points","f":"fill",
+                 "s":"stroke","w":"width"}
+        data={"elements":[{aliases.get(k,k):v for k,v in part.items()}
+                          for part in data["e"]]}
     validate_art(data)
     return data,prompt
 
