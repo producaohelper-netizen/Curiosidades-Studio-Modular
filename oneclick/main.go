@@ -57,8 +57,11 @@ func run(base string)error{
   return fmt.Errorf("Piper não foi configurado corretamente")
  }
  args:=append([]string{},pre...)
+ quality:=os.Getenv("CSTUDIO_QUALITY")
+ if quality=="" {quality="1080"}
+ if quality!="720" && quality!="1080" {return fmt.Errorf("CSTUDIO_QUALITY invalido: use 720 ou 1080")}
  args=append(args,"-u","-m","universal_engine.production","--workspace",root,
-  "--voice-model",model,"--piper",settings.Piper,"--quality","720")
+  "--voice-model",model,"--piper",settings.Piper,"--quality",quality)
  if t:=os.Getenv("CSTUDIO_TOPIC");t!=""{args=append(args,"--topic",t)}
  if wf:=os.Getenv("CSTUDIO_COMFY_WORKFLOW");wf!=""{args=append(args,"--comfy-workflow",wf)}
  if wf:=os.Getenv("CSTUDIO_SPRITE_WORKFLOW");wf!=""{args=append(args,"--sprite-workflow",wf)}
