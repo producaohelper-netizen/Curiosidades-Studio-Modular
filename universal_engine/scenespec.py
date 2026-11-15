@@ -62,7 +62,7 @@ def validate(scene: dict) -> dict:
             raise SceneError("timeline fora de ordem")
         last_time = at
         target = step.get("target")
-        if step["action"] not in ("camera_pan",) and target not in ids:
+        if step["action"] not in ("camera_pan", "camera_push") and target not in ids:
             raise SceneError(f"ator desconhecido: {target}")
         if step["action"] in ("move", "enter", "exit", "escape", "approach", "follow", "orbit"):
             if step.get("action") == "approach" and step.get("towards") not in ids:
@@ -70,7 +70,7 @@ def validate(scene: dict) -> dict:
             if step.get("action") in ("follow", "orbit") and step.get("towards") not in ids:
                 raise SceneError("follow exige towards valido")
         if "duration" in step and (not isinstance(step["duration"], (int, float)) or
-                                   step["duration"] <= 0 or at + step["duration"] > duration + 0.001):
+                                   not math.isfinite(step["duration"]) or step["duration"] <= 0 or at + step["duration"] > duration + 0.001):
             raise SceneError("duracao de acao invalida")
     if not isinstance(scene.get("visual_fact"), str) or not scene["visual_fact"].strip():
         raise SceneError("visual_fact obrigatorio para revisao de coerencia")
