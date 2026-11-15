@@ -48,7 +48,7 @@ class PipelineIntegrationTests(unittest.TestCase):
         Image.new("RGB",(1280,720),(45,100,120)).save(background)
         def fake_asset(scene,folder,comfy_workflow=None):
             return SceneAsset(scene["scene_id"],str(background),
-                "Wikimedia Commons","Example Artist",True,
+                "local-comfyui","Example Artist",True,
                 "Requires review","test cartoon","CC BY 4.0",
                 "https://creativecommons.org/licenses/by/4.0",
                 "https://commons.wikimedia.org/wiki/File:Example")
