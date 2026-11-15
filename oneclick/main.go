@@ -43,6 +43,7 @@ func run(base string)error{
  // Prepare free local Python dependencies and voice assets on first run.
  bootargs:=append(append([]string{},pre...),"-u","-m","universal_engine.bootstrap",
   "--workspace",root,"--voice-model",model)
+ if llm:=os.Getenv("CSTUDIO_OLLAMA_MODEL");llm!=""{bootargs=append(bootargs,"--ollama-model",llm)}
  boot:=exec.Command(py,bootargs...)
  boot.Dir=base;boot.Env=env
  boot.Stdout=os.Stdout;boot.Stderr=os.Stderr
