@@ -22,6 +22,7 @@ from .visual_pipeline import build_scene_asset
 from .narration import generate_piper, retime_to_audio
 from .layer_renderer import render_clip
 from .scenespec import validate
+from .sprite_factory import produce_sprite
 
 
 class ProductionError(RuntimeError):
@@ -40,6 +41,7 @@ class Settings:
     height: int = 720
     topic: str | None = None
     approval_required: bool = True
+    sprite_workflow: str | None = None
 
 
 def atomic_json(path: Path, obj):
@@ -150,10 +152,12 @@ def prepare_scene_assets(scene, work: Path, settings: Settings, *,
     for actor in scene["actors"]:
         dst = asset_path(work / "characters", actor["asset_id"])
         if not dst.is_file():
-            raise ProductionError(
-                f"{scene_id}: ator '{actor['asset_id']}' sem PNG RGBA separado; "
-                "gere/recorte e valide este personagem antes da renderização"
-            )
+            if not settings.sprite_workflow:
+                raise ProductionError(
+                    f"{scene_id}: ator '{actor['asset_id']}' sem PNG RGBA; "
+                    "configure o workflow local de sprites em ComfyUI"
+                )
+            produce_sprite(actor, work / "characters", settings.sprite_workflow)
         from PIL import Image
         with Image.open(dst) as image:
             if image.mode != "RGBA" or not image.getchannel("A").getextrema()[0] < 255:
@@ -266,12 +270,14 @@ def cli():
     ap.add_argument("--piper", default="piper")
     ap.add_argument("--llm", default="qwen2.5:7b")
     ap.add_argument("--comfy-workflow")
+    ap.add_argument("--sprite-workflow")
     ap.add_argument("--topic")
     ap.add_argument("--quality", choices=["720", "1080"], default="720")
     args = ap.parse_args()
     width, height = (1920,1080) if args.quality == "1080" else (1280,720)
     settings = Settings(args.workspace,args.voice_model,args.piper,args.llm,
-                        args.comfy_workflow,24,width,height,args.topic)
+                        args.comfy_workflow,24,width,height,args.topic,
+                        sprite_workflow=args.sprite_workflow)
     try:
         run(settings)
     except Exception as exc:
