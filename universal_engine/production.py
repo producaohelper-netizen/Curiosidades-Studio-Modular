@@ -476,7 +476,22 @@ def cli():
                         auto_comfy=not args.disable_auto_comfy,
                         vector_fallback=args.experimental_vector)
     try:
-        run(settings)
+        report = run(settings)
+        # Final production is not accepted on duration alone.
+        from qa.video_integrity_audit import audit
+        result = audit(report["output"])
+        episode = Path(report["workspace"])
+        atomic_json(episode / "auditoria_tecnica.json", result)
+        if not result["technical_passed"]:
+            report["status"] = "failed_technical_audit"
+            report.setdefault("issues", []).append(
+                "Auditoria técnica reprovada: " +
+                ", ".join(k for k, passed in result["checks"].items() if not passed))
+            atomic_json(episode / "status.json", report)
+            raise ProductionError(report["issues"][-1])
+        report["status"] = "technical_passed_pending_artistic_review"
+        atomic_json(episode / "status.json", report)
+        print("MP4 aprovado tecnicamente; revisão artística ainda obrigatória.", flush=True)
     except Exception as exc:
         print("PRODUÇÃO NÃO APROVADA:", exc, flush=True)
         raise SystemExit(2)
