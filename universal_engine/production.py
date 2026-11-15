@@ -280,6 +280,9 @@ def run(settings: Settings, *, story_writer=write_story,
                                   f"recebeu {len(scenes)}")
         for scene in scenes:
             validate(scene)
+            # Explicit product requirement: illustrations rather than documentary
+            # photographs, unless a future project explicitly chooses a hybrid.
+            scene.setdefault("visual_style","cartoon")
         identity=check_character_consistency(scenes)
         atomic_json(root/"storyboard.json", storyboard)
         stage("visual_plan", scenes=len(scenes), **identity)
