@@ -1,0 +1,283 @@
+"""Produção unificada, verificável e com falha explícita quando faltam assets.
+
+Reúne: Trends -> Ollama -> SceneSpec -> Commons/OpenCLIP/ComfyUI -> Piper ->
+camadas PNG transparentes -> FFmpeg -> relatório. Não promete qualidade
+profissional por uma mera exportação; a aprovação artística é separada.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from urllib.request import Request, urlopen
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import time
+
+from .trends import fetch_trends, top_five
+from .storyboard_planner import plan_script
+from .visual_pipeline import build_scene_asset
+from .narration import generate_piper, retime_to_audio
+from .layer_renderer import render_clip
+from .scenespec import validate
+
+
+class ProductionError(RuntimeError):
+    pass
+
+
+@dataclass
+class Settings:
+    workspace: str
+    voice_model: str
+    piper: str = "piper"
+    llm: str = "qwen2.5:7b"
+    comfy_workflow: str | None = None
+    fps: int = 24
+    width: int = 1280
+    height: int = 720
+    topic: str | None = None
+    approval_required: bool = True
+
+
+def atomic_json(path: Path, obj):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf8")
+    tmp.replace(path)
+
+
+def choose_topic(settings: Settings):
+    if settings.topic:
+        return {"title": settings.topic, "source": "manual", "trending": False}
+    try:
+        trends = top_five(fetch_trends())
+    except Exception as exc:
+        raise ProductionError("Não foi possível obter tendências reais: " + str(exc)) from exc
+    if not trends:
+        raise ProductionError("Não há tendência apropriada para vídeo educativo")
+    t = trends[0]
+    return {"title": t["title"], "source": t["source"],
+            "trending": True, "traffic_label": t["traffic_label"]}
+
+
+def _ollama_json(prompt: str, model: str, timeout=900, requester=None):
+    payload = json.dumps({"model": model, "prompt": prompt, "stream": False,
+                          "format": "json",
+                          "options": {"temperature": .45, "num_predict": 4600}}).encode("utf8")
+    request = Request("http://127.0.0.1:11434/api/generate", data=payload,
+                      headers={"Content-Type": "application/json"})
+    if requester is None:
+        def requester(req, timeout):
+            with urlopen(req, timeout=timeout) as response:
+                return json.load(response)
+    try:
+        answer = requester(request, timeout)
+        if answer.get("error"):
+            raise ProductionError("Ollama: " + str(answer["error"]))
+        return json.loads(answer["response"])
+    except (OSError, KeyError, ValueError, TypeError) as exc:
+        raise ProductionError("Ollama não respondeu com JSON válido: " + str(exc)) from exc
+
+
+def write_story(topic, llm, generator=None):
+    prompt = f"""Escreva UM roteiro ORIGINAL de curiosidade para YouTube em português
+brasileiro, de aproximadamente cinco minutos, sobre {topic!r}.
+Explique com exemplos concretos que uma criança entenda, 1 narrador, humor
+inocente/situacional, sem copiar personagens famosos. Sem frases de enchimento,
+sem inventar fatos científicos ou informações atuais não verificadas.
+Resposta APENAS JSON no formato:
+{{"title":"...","sections":[{{"text":"parágrafo contínuo de 100-125 palavras"}}]}}
+EXATAMENTE 6 sections e cerca de 650-730 palavras no total. Cada parágrafo
+deve permitir ilustrações de ações específicas, não imagens de preenchimento.
+Não inclua instruções de animação dentro da fala.
+"""
+    result = generator(prompt) if generator else _ollama_json(prompt, llm)
+    sections = result.get("sections") if isinstance(result, dict) else None
+    if not isinstance(sections, list) or len(sections) != 6:
+        raise ProductionError("Roteiro precisa de seis seções")
+    for part in sections:
+        if not isinstance(part, dict) or not isinstance(part.get("text"), str):
+            raise ProductionError("Seção inválida")
+    narration = "\n".join(part["text"].strip() for part in sections)
+    words = len(narration.split())
+    if not 610 <= words <= 760:
+        raise ProductionError(f"Roteiro com {words} palavras; esperado 610–760")
+    return {"title": str(result.get("title") or topic), "sections": sections,
+            "narration": narration, "words": words}
+
+
+def assert_preflight(settings):
+    missing = []
+    for item in ("ffmpeg", "ffprobe", settings.piper):
+        if not (shutil.which(item) or Path(item).is_file()):
+            missing.append(item)
+    if not Path(settings.voice_model).is_file():
+        missing.append("modelo Piper .onnx")
+    if not Path(settings.voice_model + ".json").is_file():
+        missing.append("configuração Piper .onnx.json")
+    if missing:
+        raise ProductionError("Dependências ausentes: " + ", ".join(missing))
+    if settings.fps != 24 or settings.width < 960 or settings.height < 540:
+        raise ProductionError("Exige 24 FPS e pelo menos 960×540")
+
+
+def asset_path(base: Path, asset_id: str):
+    # Untrusted strings from the model must not escape the asset directory.
+    if not isinstance(asset_id, str) or not asset_id:
+        raise ProductionError("asset_id inválido")
+    digest = hashlib.sha256(asset_id.encode("utf8")).hexdigest()[:24]
+    return base / (digest + ".png")
+
+
+def prepare_scene_assets(scene, work: Path, settings: Settings, *,
+                         get_asset=build_scene_asset):
+    """Search/generate BACKGROUND; actors need RGBA assets with known IDs.
+
+    There is deliberately NO automatic inference that a full Wikimedia
+    photograph is a transparent character sprite.
+    """
+    scene_id = scene["scene_id"]
+    result = get_asset(scene, work / "image_search",
+                       comfy_workflow=settings.comfy_workflow)
+    if not result.file:
+        raise ProductionError(f"{scene_id}: falta imagem pertinente ao roteiro: {result.reason}")
+    if not result.license_name and result.source != "local-comfyui":
+        raise ProductionError(f"{scene_id}: imagem sem licença rastreável")
+    sprites = {}
+    for actor in scene["actors"]:
+        dst = asset_path(work / "characters", actor["asset_id"])
+        if not dst.is_file():
+            raise ProductionError(
+                f"{scene_id}: ator '{actor['asset_id']}' sem PNG RGBA separado; "
+                "gere/recorte e valide este personagem antes da renderização"
+            )
+        from PIL import Image
+        with Image.open(dst) as image:
+            if image.mode != "RGBA" or not image.getchannel("A").getextrema()[0] < 255:
+                raise ProductionError(f"{scene_id}: sprite {dst.name} sem transparência")
+        sprites[actor["asset_id"]] = dst
+    return Path(result.file), sprites, result
+
+
+def concatenate(clips: list[Path], output: Path, ffmpeg="ffmpeg"):
+    if not clips or any(not p.is_file() for p in clips):
+        raise ProductionError("Lista de clipes incompleta")
+    concatfile = output.parent / "lista_ffmpeg.txt"
+    # Use relative filenames to avoid quoting path characters in concat demuxer.
+    for i, clip in enumerate(clips):
+        if clip.parent != output.parent:
+            raise ProductionError("Clipes devem compartilhar a mesma pasta de saída")
+    concatfile.write_text("".join("file '"+
+        p.name.replace("'", "'\\''") + "'\n" for p in clips), encoding="utf8")
+    cmd = [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "concat",
+           "-safe", "0", "-i", str(concatfile), "-c", "copy", str(output)]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode or not output.is_file():
+        raise ProductionError("FFmpeg não conseguiu reunir os vídeos: " + result.stderr[-500:])
+    return output
+
+
+def probe_duration(video):
+    output = subprocess.check_output(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(video)], text=True)
+    return float(output.strip())
+
+
+def run(settings: Settings, *, story_writer=write_story,
+        planner=plan_script, asset_provider=build_scene_asset,
+        tts=generate_piper, clip_renderer=render_clip,
+        topic_selector=choose_topic, mux=concatenate, probe=probe_duration):
+    assert_preflight(settings)
+    root = Path(settings.workspace)
+    root.mkdir(parents=True, exist_ok=True)
+    status_path = root / "status.json"
+    report = {"status": "started", "stages": [], "issues": [],
+              "artistic_approval": "NOT_PERFORMED"}
+    def stage(name, **extras):
+        report["stages"].append({"stage": name, "at": time.time(), **extras})
+        atomic_json(status_path, report)
+        print(name, flush=True)
+    try:
+        topic = topic_selector(settings)
+        stage("topic", topic=topic)
+        story = story_writer(topic["title"], settings.llm)
+        atomic_json(root/"roteiro.json", story)
+        stage("script", words=story["words"])
+        storyboard = planner(story["narration"], max_words=15)
+        scenes = storyboard["scenes"]
+        if not 40 <= len(scenes) <= 100:
+            raise ProductionError("Storyboard precisa de 40–100 cenas; "
+                                  f"recebeu {len(scenes)}")
+        for scene in scenes:
+            validate(scene)
+        atomic_json(root/"storyboard.json", storyboard)
+        stage("visual_plan", scenes=len(scenes))
+        clips = []
+        sound_total = 0.
+        asset_log = []
+        for index, scene in enumerate(scenes):
+            scene_dir = root/"shots"/f"{index:03}"
+            scene_dir.mkdir(parents=True, exist_ok=True)
+            bg, sprites, asset = prepare_scene_assets(
+                scene, root/"assets", settings, get_asset=asset_provider)
+            asset_log.append(asdict(asset))
+            voice = tts(scene["narration"], settings.voice_model,
+                        scene_dir/"speech.wav", executable=settings.piper)
+            sound_total += voice["duration"]
+            aligned = retime_to_audio(scene, voice["duration"])
+            clip = root/"clips"/f"clip_{index:03}.mp4"
+            clip.parent.mkdir(parents=True, exist_ok=True)
+            clip_renderer(aligned, bg, sprites, voice["path"], clip,
+                          fps=settings.fps, size=(settings.width, settings.height))
+            clips.append(clip)
+            if index % 5 == 0 or index == len(scenes)-1:
+                stage("scene_render", index=index+1, total=len(scenes),
+                      narration_seconds=round(sound_total,2))
+        atomic_json(root/"licencas_e_assets.json", asset_log)
+        if not 285 <= sound_total <= 315:
+            raise ProductionError(f"Narração total {sound_total:.1f}s fora de 5 minutos; "
+                                  "não acelerar nem cortar artificialmente")
+        stage("audio_duration_checked", seconds=round(sound_total,2))
+        video = mux(clips, root/"video_provisorio.mp4")
+        final_length = probe(video)
+        if not 285 <= final_length <= 315:
+            raise ProductionError(f"MP4 tem {final_length:.1f}s; duração fora da meta")
+        report["status"] = "rendered_pending_editorial_review"
+        report["output"] = str(video)
+        report["duration"] = final_length
+        stage("finished_pending_review", duration=round(final_length,2))
+        return report
+    except Exception as exc:
+        report["status"] = "failed"
+        report["issues"].append(f"{type(exc).__name__}: {exc}")
+        atomic_json(status_path, report)
+        raise
+
+
+def cli():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--workspace", required=True)
+    ap.add_argument("--voice-model", required=True)
+    ap.add_argument("--piper", default="piper")
+    ap.add_argument("--llm", default="qwen2.5:7b")
+    ap.add_argument("--comfy-workflow")
+    ap.add_argument("--topic")
+    ap.add_argument("--quality", choices=["720", "1080"], default="720")
+    args = ap.parse_args()
+    width, height = (1920,1080) if args.quality == "1080" else (1280,720)
+    settings = Settings(args.workspace,args.voice_model,args.piper,args.llm,
+                        args.comfy_workflow,24,width,height,args.topic)
+    try:
+        run(settings)
+    except Exception as exc:
+        print("PRODUÇÃO NÃO APROVADA:", exc, flush=True)
+        raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    cli()
