@@ -4,6 +4,7 @@ package main
 
 import (
  "bufio"
+ "encoding/json"
  "fmt"
  "os"
  "os/exec"
@@ -37,17 +38,31 @@ func run(base string)error{
  if model==""{
   model=filepath.Join(root,"models","pt_BR-faber-medium.onnx")
  }
+ env:=os.Environ()
+ env=append(env,"PYTHONUNBUFFERED=1","PYTHONPATH="+base)
+ // Prepare free local Python dependencies and voice assets on first run.
+ bootargs:=append(append([]string{},pre...),"-u","-m","universal_engine.bootstrap",
+  "--workspace",root,"--voice-model",model)
+ boot:=exec.Command(py,bootargs...)
+ boot.Dir=base;boot.Env=env
+ boot.Stdout=os.Stdout;boot.Stderr=os.Stderr
+ fmt.Println("Preparando dependências gratuitas e voz brasileira, se necessário...")
+ if err:=boot.Run();err!=nil{return fmt.Errorf("etapa de preparação: %w",err)}
+ configPath:=filepath.Join(root,"runtime_configuration.json")
+ content,err:=os.ReadFile(configPath)
+ if err!=nil{return fmt.Errorf("configuração de runtime ausente: %w",err)}
+ var settings struct { Piper string `json:"piper"` }
+ if err=json.Unmarshal(content,&settings);err!=nil || settings.Piper=="" {
+  return fmt.Errorf("Piper não foi configurado corretamente")
+ }
  args:=append([]string{},pre...)
  args=append(args,"-u","-m","universal_engine.production","--workspace",root,
-  "--voice-model",model,"--quality","720")
+  "--voice-model",model,"--piper",settings.Piper,"--quality","720")
  if t:=os.Getenv("CSTUDIO_TOPIC");t!=""{args=append(args,"--topic",t)}
  if wf:=os.Getenv("CSTUDIO_COMFY_WORKFLOW");wf!=""{args=append(args,"--comfy-workflow",wf)}
  if wf:=os.Getenv("CSTUDIO_SPRITE_WORKFLOW");wf!=""{args=append(args,"--sprite-workflow",wf)}
  if voice:=os.Getenv("CSTUDIO_PIPER");voice!=""{args=append(args,"--piper",voice)}
  if llm:=os.Getenv("CSTUDIO_OLLAMA_MODEL");llm!=""{args=append(args,"--llm",llm)}
- env:=os.Environ()
- env=append(env,"PYTHONUNBUFFERED=1")
- env=append(env,"PYTHONPATH="+base)
  cmd:=exec.Command(py,args...)
  cmd.Dir=base;cmd.Env=env
  cmd.Stdout=os.Stdout;cmd.Stderr=os.Stderr
