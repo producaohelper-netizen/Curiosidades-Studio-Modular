@@ -89,6 +89,7 @@ class PipelineIntegrationTests(unittest.TestCase):
         self.assertEqual(result["duration"],300.0)
 
     def test_rejects_missing_asset_and_does_not_claim_success(self):
+        self.settings.vector_fallback=False
         asset,tts,clip=self.fixtures()
         with patch("universal_engine.production.assert_preflight"):
             with self.assertRaises(ProductionError):
