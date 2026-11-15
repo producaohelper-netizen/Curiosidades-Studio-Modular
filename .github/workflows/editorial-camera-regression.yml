@@ -5,8 +5,10 @@ on:
       - 'qa/**'
       - 'universal_engine/scenespec.py'
       - 'universal_engine/expressive_poses.py'
+      - 'universal_engine/layer_renderer.py'
       - 'tests/test_editorial_integrity.py'
       - 'tests/test_expressive_poses.py'
+      - 'tests/test_renderer_expressive_pose_integration.py'
       - 'tests/test_video_integrity_audit.py'
       - 'tests/test_camera_timing_regressions.py'
       - 'tests/test_camera_parameter_validation.py'
@@ -22,11 +24,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Instalar Pillow para testes de renderizacao
+        run: python -m pip install Pillow
       - name: Executar testes editoriais e de camera
         run: |
           python -m unittest -v \
             tests/test_editorial_integrity.py \
             tests/test_expressive_poses.py \
+            tests/test_renderer_expressive_pose_integration.py \
             tests/test_video_integrity_audit.py \
             tests/test_camera_timing_regressions.py \
             tests/test_camera_parameter_validation.py
