@@ -40,6 +40,11 @@ jobs:
           if ($exe.Length -lt 100000) { throw "Arquivo muito pequeno" }
       - name: Verificar componentes obrigatorios do candidato
         run: python -m qa.windows_package_check .
+      - name: Executar verificacao nativa do EXE no Windows
+        shell: pwsh
+        run: |
+          & .\\CuriosidadesStudio_Unificado_Windows_CANDIDATO.exe --verificar-pacote
+          if ($LASTEXITCODE -ne 0) { throw 'Autoverificacao do executavel falhou' }
       - name: Empacotar programa e código, sem prometer publicação
         shell: pwsh
         run: |
