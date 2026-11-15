@@ -144,6 +144,7 @@ def motion(scene: dict, at: float) -> dict:
             s["highlight"]=True
         elif action in ("emit_particles","reveal"):
             s["effect"]=str(step.get("effect","sparkles"))
+            s["effect_elapsed"]=max(0.,at-start)
     return state
 
 def load(path: str | Path) -> dict:
