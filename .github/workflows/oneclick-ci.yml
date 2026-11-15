@@ -37,10 +37,15 @@ jobs:
           $exe = Get-Item "CuriosidadesStudio_Unificado_Windows_CANDIDATO.exe"
           Write-Host "Binario: $($exe.Length) bytes"
           if ($exe.Length -lt 100000) { throw "Arquivo muito pequeno" }
+      - name: Empacotar programa e código, sem prometer publicação
+        shell: pwsh
+        run: |
+          Compress-Archive -Path 'CuriosidadesStudio_Unificado_Windows_CANDIDATO.exe','universal_engine','requirements-local.txt','README.md' -DestinationPath 'CuriosidadesStudio_Candidato_Desenvolvimento.zip' -Force
+          if ($LASTEXITCODE -ne 0) { throw 'Falha no pacote' }
       - uses: actions/upload-artifact@v4
         with:
           name: candidato-windows-sem-aprovacao-artistica
-          path: CuriosidadesStudio_Unificado_Windows_CANDIDATO.exe
+          path: CuriosidadesStudio_Candidato_Desenvolvimento.zip
           retention-days: 7
 
   linux_tests:
