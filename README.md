@@ -1,3 +1,35 @@
+## Novo direcionamento editorial — Reels (em desenvolvimento)
+
+O plano **Fatos Que Parecem Mentira** exige uma segunda linha de produção,
+separada dos episódios horizontais de cinco minutos.
+
+- **Formato-alvo:** 1080 × 1920 (9:16), 24 fps, 25 ou 45 segundos.
+- **Quatro séries:** história real (35%), ciência/natureza (30%),
+  mistérios documentados (20%) e cotidiano (15%).
+- **Roteiro obrigatório:** gancho, contexto, desenvolvimento e revelação.
+- **Evidências:** no mínimo duas referências registradas e afirmações
+  classificadas como fato, hipótese ou questão em aberto. Referências
+  informadas por IA **não** são automaticamente verificadas.
+- **Aprovação:** bloqueada até checagem independente das fontes e revisão
+  editorial/artística. A futura renderização deve incluir legendas sincronizadas,
+  trilha baixa, cortes frequentes e visuais pertinentes.
+
+O contrato e a checagem de roteiro estão em
+`universal_engine/shortform.py`. Para validar um roteiro JSON existente:
+
+```bash
+python -m universal_engine.shortform_preflight --input roteiro_reel.json --output plano_reel.json
+```
+
+**Estado real:** essa etapa prepara e valida o plano editorial; **ainda não
+gera um Reel**. O executável Windows atual continua usando o pipeline de
+cinco minutos. A integração de narração curta, renderização vertical,
+legendas, música, checagem independente e exportação MP4 é trabalho pendente.
+Não use a aprovação dos testes de cinco minutos como prova de que o novo
+formato está pronto.
+
+---
+
 # Curiosidades Studio — integração e validação
 
 Repositório destinado ao desenvolvimento do gerador de vídeos de curiosidades para YouTube.
