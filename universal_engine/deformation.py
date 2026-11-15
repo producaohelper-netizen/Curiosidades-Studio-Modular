@@ -30,3 +30,23 @@ def organic_sway(image: Image.Image, time_sec: float, *,
     return image.transform((w,h),Image.Transform.MESH,mesh,
                            resample=Image.Resampling.BICUBIC,
                            fillcolor=(0,0,0,0))
+
+
+def organic_swim(image: Image.Image, time_sec: float, *,
+                 tail_side: str = "left", strength: float = .022):
+    """Bend the tail end of a fish silhouette while preserving its head.
+
+    Works with a single RGBA sprite, independently of subject or background.
+    It is deliberately restrained; skeletal animation remains preferable.
+    """
+    if tail_side not in ("left","right"):
+        raise ValueError("tail_side must be left or right")
+    if image.mode != "RGBA":
+        image=image.convert("RGBA")
+    turn=(Image.Transpose.ROTATE_90 if tail_side=="left"
+          else Image.Transpose.ROTATE_270)
+    undo=(Image.Transpose.ROTATE_270 if tail_side=="left"
+          else Image.Transpose.ROTATE_90)
+    rotated=image.transpose(turn)
+    swayed=organic_sway(rotated,time_sec,strength=strength,cycle=1.45)
+    return swayed.transpose(undo)
