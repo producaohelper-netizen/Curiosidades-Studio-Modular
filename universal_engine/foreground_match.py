@@ -18,7 +18,9 @@ def verify_foreground(actor: dict, scene: dict, sprite_path: str | Path,
     if not isinstance(phrase,str) or len(phrase.strip())<5:
         raise ForegroundMismatch("Sem descrição em inglês do sujeito extraído")
     ranker=matcher or _shared_matcher()
-    scores=ranker.score("isolated photo of "+phrase,[Path(sprite_path)])
+    prefix=("original clean 2D cartoon illustration of " if scene.get("visual_style")=="cartoon"
+            else "isolated photograph of ")
+    scores=ranker.score(prefix+phrase,[Path(sprite_path)])
     if not scores:
         raise ForegroundMismatch("OpenCLIP não retornou pontuação do recorte")
     score=float(scores[0])
