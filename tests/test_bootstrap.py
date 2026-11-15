@@ -26,8 +26,7 @@ class BootstrapTests(unittest.TestCase):
             for name in (("ffmpeg.exe","ffprobe.exe") if os.name=="nt" else ("ffmpeg","ffprobe")):
                 (folder/name).write_bytes(b"fixture")
             with patch("universal_engine.bootstrap.shutil.which",return_value=None):
-                self.assertEqual(find_ffmpeg_bin(Path(d)/"models"/"voice.onnx"),
-                                 str(folder))
+                self.assertTrue(Path(find_ffmpeg_bin(Path(d)/"models"/"voice.onnx")).samefile(folder))
     def test_invalid_voice_download_is_atomic(self):
         with tempfile.TemporaryDirectory() as temp:
             model=Path(temp)/"pt_BR-faber-medium.onnx"
