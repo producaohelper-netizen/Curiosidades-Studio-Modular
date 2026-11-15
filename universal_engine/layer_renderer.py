@@ -5,7 +5,7 @@ círculos genéricos quando o modo de produção está ativo. Usa SceneSpec para
 posicionar e movimentar os elementos visuais ao longo da narração.
 """
 from __future__ import annotations
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
 from io import BytesIO
 import math, subprocess, wave, json
@@ -76,6 +76,24 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
                 radius=max(2,w//150)
                 d.ellipse((ex-radius,ey-radius,ex+radius,ey+radius),
                           fill="#4d3b78" if "ink" in str(transform["effect"]) else "#eac959")
+    # Uma palavra-chave discreta reforça a explicação sem virar slide estático.
+    callout=scene.get("callout","")
+    if isinstance(callout,str) and 1<=len(callout)<=45 and time_sec>=.45:
+        d=ImageDraw.Draw(canvas,"RGBA")
+        try:
+            font=ImageFont.truetype("DejaVuSans-Bold.ttf",max(17,round(h*.044)))
+        except OSError:
+            font=ImageFont.load_default()
+        words=callout.upper()
+        l,t,r,b=d.textbbox((0,0),words,font=font)
+        tw=r-l
+        x=max(16,(w-tw)//2)
+        y=h-max(70,round(h*.13))
+        a=int(205*min(1.,(time_sec-.45)/.3))
+        d.rounded_rectangle((x-24,y-12,x+tw+24,y+b-t+17),
+                            radius=17,fill=(15,32,53,a),
+                            outline=(232,242,250,min(160,a)),width=2)
+        d.text((x,y),words,font=font,fill=(255,255,255,min(255,a+40)))
     return apply_camera(canvas.convert("RGB"),scene,time_sec,poses)
 
 def audio_duration(path:str|Path) -> float:
