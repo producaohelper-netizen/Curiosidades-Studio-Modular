@@ -13,7 +13,7 @@ from .scenespec import validate, motion
 from .camera import apply_camera
 from .sprites import select_frame
 from .effects import paint_effect,paint_reaction
-from .deformation import organic_sway
+from .deformation import organic_sway, organic_swim
 from .environment_motion import draw_environment
 
 class RenderError(RuntimeError):
@@ -69,7 +69,13 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
                 layer_cache[key]=layer.copy()
         if (actor.get("kind")=="animal" and sheet is None and
             scene.get("visual_style")=="cartoon" and actor.get("organic_sway",True)):
-            layer=organic_sway(layer,time_sec)
+            visual_label=' '.join(str(actor.get(k,'')) for k in
+                                   ('id','visual_query_en','display_name')).lower()
+            if any(term in visual_label for term in ('shark','fish','tubarão','peixe')):
+                layer=organic_swim(layer,time_sec,
+                                   tail_side=actor.get('tail_side','left'))
+            else:
+                layer=organic_sway(layer,time_sec)
         alpha=float(transform.get("opacity",1))
         if alpha<1:
             layer.putalpha(layer.getchannel("A").point(lambda x:int(x*alpha)))
