@@ -18,7 +18,8 @@ def draw_environment(canvas:Image.Image, setting:str, t:float, identity:str="sce
     w,h=canvas.size
     seed=int(hashlib.sha256((identity+"|"+kind).encode("utf8")).hexdigest()[:12],16)
     rng=random.Random(seed)
-    d=ImageDraw.Draw(canvas,"RGBA")
+    overlay=Image.new("RGBA",canvas.size,(0,0,0,0))
+    d=ImageDraw.Draw(overlay)
     if kind=="underwater":
         # Independent bubbles slowly rise; subtle translucency doesn't hide fish.
         for i in range(22):
@@ -66,4 +67,5 @@ def draw_environment(canvas:Image.Image, setting:str, t:float, identity:str="sce
             y=rng.uniform(.45,.85)*h
             r=max(2,round(w*.003))
             d.ellipse((x-r,y-r/2,x+r,y+r/2),fill=(229,210,175,75))
+    canvas.alpha_composite(overlay)
     return canvas
