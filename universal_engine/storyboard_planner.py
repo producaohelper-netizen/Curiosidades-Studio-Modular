@@ -91,6 +91,14 @@ Falas (não altere nem reescreva; serão inseridas pelo programa):
                "callout":raw.get("callout",""),
                "visual_query_en":raw.get("visual_query_en",""),
                "search_terms_en":raw.get("search_terms_en","")}
+        callout=scene.get("callout","")
+        if not isinstance(callout,str) or len(callout)>45:
+            scene["callout"]=""
+        elif callout:
+            # Never add screen claims that are absent from the verified narration.
+            words=lambda t:set(re.findall(r"\w+",t.casefold(),flags=re.UNICODE))
+            if not words(callout).issubset(words(line)):
+                scene["callout"]=""
         if len(scene["visual_query_en"].strip())<12:
             raise PlanningError("Cena sem descrição visual suficiente")
         if not isinstance(scene["search_terms_en"],str) or not scene["search_terms_en"].strip():
