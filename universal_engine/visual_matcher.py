@@ -80,7 +80,8 @@ def match_scene(scene: dict, candidates: Sequence[MediaCandidate], downloaded_im
     query=scene.get("visual_query_en", "")
     if not isinstance(query,str) or len(query.strip())<12:
         raise ValueError("Cena exige visual_query_en explícito e descritivo")
-    return decide(candidates,matcher.score(query,[Path(p) for p in downloaded_images]),minimum=minimum)
+    return decide(candidates,matcher.score(query,[Path(p) for p in downloaded_images]),
+                  minimum=minimum,margin_required=0.0)
 
 def export_decision(scene_id:str, decision:MatchDecision, path:str|Path):
     file=Path(path);file.parent.mkdir(parents=True,exist_ok=True)
