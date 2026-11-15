@@ -10,9 +10,9 @@ class AnimatedEffectsTests(unittest.TestCase):
     def test_octopus_ink_cloud_grows_without_flicker(self):
         early=self._frame("ink_cloud",.2)
         late=self._frame("ink_cloud",1.5)
-        self.assertIsNotNone(ImageChops.difference(early,late).getbbox())
+        self.assertIsNotNone(ImageChops.difference(early.convert('RGB'),late.convert('RGB')).getbbox())
         self.assertEqual(late.tobytes(),self._frame("ink_cloud",1.5).tobytes())
     def test_volcano_eruption_has_upward_movement(self):
         start=self._frame("smoke",.1)
         later=self._frame("smoke",1.4)
-        self.assertIsNotNone(ImageChops.difference(start,later).getbbox())
+        self.assertIsNotNone(ImageChops.difference(start.convert('RGB'),later.convert('RGB')).getbbox())
