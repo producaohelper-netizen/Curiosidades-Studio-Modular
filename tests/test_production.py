@@ -47,6 +47,12 @@ class PipelineIntegrationTests(unittest.TestCase):
         background=root/"background.png"
         Image.new("RGB",(1280,720),(45,100,120)).save(background)
         def fake_asset(scene,folder,comfy_workflow=None):
+            target=asset_path(Path(folder).parent/"characters","shared_octopus")
+            target.parent.mkdir(parents=True,exist_ok=True)
+            if not target.exists():
+                im=Image.new("RGBA",(64,64),(0,0,0,0))
+                ImageDraw.Draw(im).ellipse((10,9,55,60),fill=(255,160,20,255))
+                im.save(target)
             return SceneAsset(scene["scene_id"],str(background),
                 "local-comfyui","Example Artist",True,
                 "Requires review","test cartoon","CC BY 4.0",
@@ -79,7 +85,7 @@ class PipelineIntegrationTests(unittest.TestCase):
                 probe=lambda video:300.0)
         self.assertEqual(result["status"],"rendered_pending_editorial_review")
         self.assertEqual(result["artistic_approval"],"NOT_PERFORMED")
-        self.assertEqual(len(list((self.root/"clips").glob("*.mp4"))),50)
+        self.assertEqual(len(list(Path(result["workspace"]).joinpath("clips").glob("*.mp4"))),50)
         self.assertEqual(result["duration"],300.0)
 
     def test_rejects_missing_asset_and_does_not_claim_success(self):
@@ -95,7 +101,7 @@ class PipelineIntegrationTests(unittest.TestCase):
                         "s000",None,"unavailable","",True,"sem imagem","", "", "", ""),
                     tts=tts,clip_renderer=clip)
         import json
-        status=json.loads((self.root/"status.json").read_text())
+        status=json.loads(next((self.root/"episodes").iterdir()).joinpath("status.json").read_text())
         self.assertEqual(status["status"],"failed")
 
 if __name__=="__main__":
