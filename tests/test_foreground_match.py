@@ -15,6 +15,16 @@ class ForegroundMatchTests(unittest.TestCase):
         v=verify_foreground(self.actor,self.scene,Path("test.png"),matcher=GoodMatcher())
         self.assertGreater(v["score"],.23)
         self.assertIn("octopus",v["subject_text"])
+    def test_cartoon_style_uses_illustration_prompt(self):
+        prompts=[]
+        class Model:
+            def score(self,text,images):
+                prompts.append(text)
+                return [.45]
+        scene={**self.scene,"visual_style":"cartoon"}
+        verify_foreground(self.actor,scene,Path("sprite.png"),matcher=Model())
+        self.assertIn("2D cartoon illustration",prompts[0])
+        self.assertNotIn("photograph",prompts[0])
     def test_reject_wrong_subject(self):
         class WrongMatcher:
             def score(self,text,images):return [.04]
