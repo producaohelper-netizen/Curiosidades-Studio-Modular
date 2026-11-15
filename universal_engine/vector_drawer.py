@@ -115,9 +115,15 @@ def normalize_simple_shapes(data):
         if not isinstance(shape,dict) or shape.get("t") not in ("ellipse","rectangle"):
             raise VectorArtError(f"Forma {n}: tipo desconhecido")
         box=shape.get("b")
-        if not isinstance(box,list) or len(box)!=4 or not all(_point(x) for x in box):
-            raise VectorArtError(f"Forma {n}: coordenadas inválidas")
-        x1,x2=sorted((box[0],box[2]));y1,y2=sorted((box[1],box[3]))
+        if (not isinstance(box,list) or len(box)!=4 or
+            not all(isinstance(x,(int,float)) and math.isfinite(x) for x in box)):
+            raise VectorArtError(f"Forma {n}: coordenadas ausentes ou não numéricas")
+        # Repair only bounded drawing mistakes: reorder inverted axes and
+        # clip coordinates to the 512px artboard. Do not invent missing parts.
+        if any(x < -64 or x > 576 for x in box):
+            raise VectorArtError(f"Forma {n}: coordenadas fora do desenho")
+        x1,x2=sorted((max(0.,min(512.,box[0])),max(0.,min(512.,box[2]))))
+        y1,y2=sorted((max(0.,min(512.,box[1])),max(0.,min(512.,box[3]))))
         if x2-x1<2 or y2-y1<2:
             raise VectorArtError(f"Forma {n}: dimensões inválidas")
         fill=shape.get("f");stroke=shape.get("s")
