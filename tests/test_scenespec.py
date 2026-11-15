@@ -68,4 +68,25 @@ class SceneSpecTests(unittest.TestCase):
   self.assertGreater(motion(s,2.1)["polvo"]["opacity"],.9)
   self.assertLess(motion(s,4.9)["polvo"]["opacity"],.2)
 
+ def test_consecutive_moves_no_teleport(self):
+  s=copy.deepcopy(SCENES[2])
+  s["timeline"]=[
+   {"at":0,"action":"move","target":"robo","to_x":.9,"duration":4},
+   {"at":2,"action":"move","target":"robo","to_x":.2,"duration":2}
+  ]
+  before=motion(s,1.999)["robo"]["x"]
+  after=motion(s,2.001)["robo"]["x"]
+  self.assertLess(abs(before-after),.01,"Personagem teletransportou entre movimentos")
+ def test_orbit_moves_planet_across_positions(self):
+  s=copy.deepcopy(SCENES[1])
+  s["timeline"]=[{"at":0,"action":"orbit","target":"terra","towards":"sol",
+                  "duration":4,"degrees":180}]
+  a=motion(s,.1)["terra"]
+  b=motion(s,3.9)["terra"]
+  self.assertGreater(abs(a["x"]-b["x"]),.4)
+ def test_orbit_unknown_target_is_rejected(self):
+  s=copy.deepcopy(SCENES[1])
+  s["timeline"]=[{"at":0,"action":"orbit","target":"terra","towards":"missing"}]
+  with self.assertRaises(SceneError):validate(s)
+
 if __name__=="__main__":unittest.main()
