@@ -106,6 +106,30 @@ def rasterize(data,output,size=512,supersample=2):
     cropped.save(out,"PNG")
     return out
 
+def normalize_simple_shapes(data):
+    """Repair only harmless axis inversions; reject missing or unsafe shapes."""
+    if not isinstance(data,dict) or not isinstance(data.get("e"),list):
+        raise VectorArtError("Desenho sem lista de formas")
+    items=[]
+    for n,shape in enumerate(data["e"]):
+        if not isinstance(shape,dict) or shape.get("t") not in ("ellipse","rectangle"):
+            raise VectorArtError(f"Forma {n}: tipo desconhecido")
+        box=shape.get("b")
+        if not isinstance(box,list) or len(box)!=4 or not all(_point(x) for x in box):
+            raise VectorArtError(f"Forma {n}: coordenadas inválidas")
+        x1,x2=sorted((box[0],box[2]));y1,y2=sorted((box[1],box[3]))
+        if x2-x1<2 or y2-y1<2:
+            raise VectorArtError(f"Forma {n}: dimensões inválidas")
+        fill=shape.get("f");stroke=shape.get("s")
+        if not all(isinstance(v,str) and COLOR.fullmatch(v) for v in (fill,stroke)):
+            raise VectorArtError(f"Forma {n}: cor inválida")
+        width=shape.get("w",4)
+        if not isinstance(width,(int,float)) or not math.isfinite(width) or not 1<=width<=12:
+            raise VectorArtError(f"Forma {n}: espessura inválida")
+        items.append({"shape":shape["t"],"bbox":[x1,y1,x2,y2],
+                      "fill":fill,"stroke":stroke,"width":width})
+    return validate_art({"elements":items})
+
 def local_instructions(actor,model="qwen2.5:7b",requester=None):
     label=(actor.get("visual_query_en") or actor.get("label_en") or
            actor.get("label") or actor.get("display_name") or actor.get("id") or "")
@@ -113,11 +137,11 @@ def local_instructions(actor,model="qwen2.5:7b",requester=None):
     prompt=(
         "Crie uma ilustração vetorial 2D infantil ORIGINAL em fundo transparente. "
         "Somente um sujeito identificável, sem texto ou cenário: "+str(label)+". "
-        "Use 8 a 14 formas, contorno escuro grosso, cores vivas. "
+        "Use 8 a 14 elipses/retângulos, contorno escuro, cores vivas. "
         "Responda JSON compacto com e: lista de formas. "
-        "Cada forma usa t=ellipse|rectangle|polygon|line, "
+        "Cada forma usa t=ellipse|rectangle, "
         "b=[x1,y1,x2,y2] para ellipse/rectangle, "
-        "p=[[x,y],...] para polygon/line; "
+        
         "f=cor de preenchimento #RRGGBB, s=contorno #RRGGBB, w=largura. "
         "Coordenadas de 0 a 512. Monte corpo, rosto e detalhes em camadas. "
         "Não desenhe fundo. Categoria "+str(actor.get("kind","object"))+"."
@@ -128,18 +152,20 @@ def local_instructions(actor,model="qwen2.5:7b",requester=None):
                         data=json.dumps(payload).encode("utf8"),
                         headers={"Content-Type":"application/json"})
             with urlopen(req,timeout=420) as reply:return json.load(reply)
+    # Use strict required fields: the small Ollama model frequently invents
+    # invalid optional polygon points or emits inverted boxes.
     item_schema={"type":"object","properties":{
-       "t":{"type":"string","enum":["ellipse","rectangle","polygon","line"]},
-       "b":{"type":"array","items":{"type":"number"},"minItems":4,"maxItems":4},
-       "p":{"type":"array","items":{"type":"array","items":{"type":"number"},
-           "minItems":2,"maxItems":2},"minItems":2,"maxItems":25},
-       "f":{"type":"string"},"s":{"type":"string"},"w":{"type":"number"}
-    },"required":["t"]}
+       "t":{"type":"string","enum":["ellipse","rectangle"]},
+       "b":{"type":"array","items":{"type":"integer"},"minItems":4,"maxItems":4},
+       "f":{"type":"string","pattern":"^#[0-9a-fA-F]{6}$"},
+       "s":{"type":"string","pattern":"^#[0-9a-fA-F]{6}$"},
+       "w":{"type":"integer","minimum":1,"maximum":12}
+    },"required":["t","b","f","s","w"],"additionalProperties":False}
     schema={"type":"object","properties":{
         "e":{"type":"array","items":item_schema,"minItems":8,"maxItems":14}},
-        "required":["e"]}
+        "required":["e"],"additionalProperties":False}
     payload={"model":model,"prompt":prompt,"format":schema,"stream":False,
-             "options":{"temperature":.15,"num_predict":2300}}
+             "options":{"temperature":.1,"num_predict":2200}}
     try:
         raw=requester(payload)
     except (OSError,KeyError,TypeError,ValueError) as exc:
@@ -151,10 +177,7 @@ def local_instructions(actor,model="qwen2.5:7b",requester=None):
         reason=str(raw.get('done_reason','?')) if isinstance(raw,dict) else '?'
         raise VectorArtError('JSON inválido; done_reason='+reason+'; início='+repr(preview)+'; erro='+str(exc)) from exc
     if isinstance(data,dict) and "e" in data:
-        aliases={"t":"shape","b":"bbox","p":"points","f":"fill",
-                 "s":"stroke","w":"width"}
-        data={"elements":[{aliases.get(k,k):v for k,v in part.items()}
-                          for part in data["e"]]}
+        data=normalize_simple_shapes(data)
     validate_art(data)
     return data,prompt
 
