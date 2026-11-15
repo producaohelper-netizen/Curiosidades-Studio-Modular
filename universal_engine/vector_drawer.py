@@ -115,7 +115,7 @@ def local_instructions(actor,model="qwen2.5:7b",requester=None):
         "com identidade fácil de reconhecer, proporções expressivas e traço "
         "contínuo, para vídeo educativo. NÃO desenhe cenário, fundo, texto ou "
         "marcas. O plano 512x512 é TRANSPARENTE e só o sujeito é colorido. "
-        "Responda JSON com chave elements: array ordenado de 18 a 55 formas; "
+        "Responda SOMENTE JSON com chave elements: array de 10 a 20 formas; "
         "shape ellipse|rectangle|rounded_rectangle|polygon|line|arc; "
         "bbox=[x1,y1,x2,y2] ou points=[[x,y],...]; "
         "fill e stroke cores hex #RRGGBB; width número de 1 a 14. "
@@ -133,12 +133,12 @@ def local_instructions(actor,model="qwen2.5:7b",requester=None):
                         headers={"Content-Type":"application/json"})
             with urlopen(req,timeout=420) as reply:return json.load(reply)
     payload={"model":model,"prompt":prompt,"format":"json","stream":False,
-             "options":{"temperature":.3,"num_predict":3000}}
+             "options":{"temperature":.15,"num_predict":1800}}
     try:
         raw=requester(payload)
         data=json.loads(raw["response"])
     except (OSError,KeyError,TypeError,ValueError) as exc:
-        raise VectorArtError("IA local não gerou JSON de desenho válido") from exc
+        raise VectorArtError("IA local retornou JSON inválido: "+str(exc)) from exc
     validate_art(data)
     return data,prompt
 
