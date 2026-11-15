@@ -97,7 +97,22 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
     download=downloader or download_commons
     candidates=[];images=[];errors=[]
     try:
-        for i,record in enumerate(search(lookup,limit=15)):
+        if commons_search is None and scene.get("visual_style")=="cartoon":
+            # Vector illustrations are more suitable than photographic cutouts.
+            # Wikimedia serves safe raster thumbnails of SVG illustrations.
+            found=search(str(scene.get("search_terms_en") or prompt),
+                         limit=12,filetype="drawing")
+            if len(found)<5:
+                found+=search(lookup,limit=12,filetype="bitmap")
+        else:
+            found=search(lookup,limit=15)
+        seen=set()
+        unique=[]
+        for item in found:
+            if item.image_url not in seen:
+                seen.add(item.image_url)
+                unique.append(item)
+        for i,record in enumerate(unique[:24]):
             try:
                 path=download(record,work/f"candidate_{i:02}.png")
                 candidates.append(record)
