@@ -415,6 +415,9 @@ def run(settings: Settings, *, story_writer=write_story,
             if index%5==0 or index==len(scenes)-1:
                 stage("scene_render",index=index+1,total=len(scenes),
                       narration_seconds=round(sound_total,2))
+        if len(clips) != len(scenes) or any(not Path(clip).is_file() or Path(clip).stat().st_size == 0 for clip in clips):
+            raise ProductionError("Cenas incompletas: todos os clipes precisam existir antes da montagem")
+        stage("all_scene_clips_verified",expected=len(scenes),found=len(clips))
         atomic_json(root/"licencas_e_assets.json", asset_log)
         # Créditos rastreáveis; não substitui a revisão das condições CC BY-SA.
         credits=[]
@@ -500,6 +503,11 @@ def cli():
         atomic_json(episode / "status.json", report)
         print("MP4 aprovado tecnicamente; revisão artística ainda obrigatória.", flush=True)
     except Exception as exc:
+        if "report" in locals() and "episode" in locals():
+            if report.get("status") != "failed_technical_audit":
+                report["status"] = "failed_technical_audit"
+                report.setdefault("issues", []).append("Auditoria técnica não concluída: "+str(exc))
+                atomic_json(episode / "status.json", report)
         print("PRODUÇÃO NÃO APROVADA:", exc, flush=True)
         raise SystemExit(2)
 
