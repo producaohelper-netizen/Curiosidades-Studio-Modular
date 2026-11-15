@@ -3,6 +3,9 @@ on:
   push:
     paths:
       - 'ci/live_illustrated_clips.py'
+      - 'universal_engine/environment_motion.py'
+      - 'universal_engine/effects.py'
+      - 'universal_engine/layer_renderer.py'
       - '.github/workflows/live-illustrated-clips.yml'
   workflow_dispatch:
 jobs:
