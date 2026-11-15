@@ -24,6 +24,21 @@ def split_narration(text:str, max_words=23)->list[str]:
             chunks.append(" ".join(words[:max_words]))
             words=words[max_words:]
         if words:chunks.append(" ".join(words))
+    # A one-word exclamation (e.g. "Uau!") creates a sub-second Piper WAV
+    # and makes animation/effects impossible to synchronize. Merge it into
+    # its neighbor without changing or deleting narration.
+    if max_words>=12 and len(chunks)>1:
+        i=0
+        while i<len(chunks):
+            if len(chunks[i].split())<5:
+                if i+1<len(chunks) and len(chunks[i].split())+len(chunks[i+1].split())<=max_words:
+                    chunks[i]=chunks[i]+" "+chunks.pop(i+1)
+                    continue
+                if i>0 and len(chunks[i-1].split())+len(chunks[i].split())<=max_words:
+                    chunks[i-1]=chunks[i-1]+" "+chunks.pop(i)
+                    i-=1
+                    continue
+            i+=1
     return chunks
 
 def _read_ollama(prompt:str, url="http://127.0.0.1:11434/api/generate",
