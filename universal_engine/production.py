@@ -340,26 +340,56 @@ def run(settings: Settings, *, story_writer=write_story,
         identity=check_character_consistency(scenes)
         atomic_json(root/"storyboard.json", storyboard)
         stage("visual_plan", scenes=len(scenes), **identity)
-        clips = []
-        sound_total = 0.
-        asset_log = []
-        for index, scene in enumerate(scenes):
-            scene_dir = root/"shots"/f"{index:03}"
-            scene_dir.mkdir(parents=True, exist_ok=True)
-            bg, sprites, asset = prepare_scene_assets(
-                scene, root/"assets", settings, get_asset=asset_provider)
+        # First synthesize ALL speech and calibrate actual duration before
+        # rendering any expensive frames. Old code could waste hours rendering
+        # and only discover at the end that narration was not five minutes.
+        def narrate_all(length_scale):
+            records=[]
+            for index,scene in enumerate(scenes):
+                folder=root/"shots"/f"{index:03}"
+                folder.mkdir(parents=True,exist_ok=True)
+                wav=folder/"speech.wav"
+                info=tts(scene["narration"],settings.voice_model,wav,
+                         executable=settings.piper,length_scale=length_scale)
+                records.append(info)
+            return records,sum(float(v["duration"]) for v in records)
+
+        voices,sound_total=narrate_all(1.0)
+        speed_scale=1.0
+        for attempt in range(2):
+            if 285 <= sound_total <= 315:break
+            speed_scale*=300.0/sound_total
+            if not .8 <= speed_scale <= 1.35:
+                raise ProductionError(
+                    f"Roteiro/voz resultariam em {sound_total:.0f}s; "
+                    "uma velocidade artificial seria necessária. Refazer roteiro."
+                )
+            stage("adjust_voice_pacing",pass_number=attempt+1,
+                  measured_seconds=round(sound_total,1),
+                  target_seconds=300,voice_length_scale=round(speed_scale,3))
+            voices,sound_total=narrate_all(round(speed_scale,4))
+        if not 285 <= sound_total <= 315:
+            raise ProductionError(
+                f"Narração real ficou em {sound_total:.1f}s; "
+                "não renderizar vídeo fora dos cinco minutos."
+            )
+        stage("voice_duration_checked",seconds=round(sound_total,2),
+              clips=len(voices),voice_length_scale=round(speed_scale,3))
+        clips=[]
+        asset_log=[]
+        for index,scene in enumerate(scenes):
+            bg,sprites,asset=prepare_scene_assets(
+                scene,root/"assets",settings,get_asset=asset_provider)
             asset_log.append(asdict(asset))
-            voice = tts(scene["narration"], settings.voice_model,
-                        scene_dir/"speech.wav", executable=settings.piper)
-            sound_total += voice["duration"]
-            aligned = retime_to_audio(scene, voice["duration"])
-            clip = root/"clips"/f"clip_{index:03}.mp4"
-            clip.parent.mkdir(parents=True, exist_ok=True)
-            clip_renderer(aligned, bg, sprites, voice["path"], clip,
-                          fps=settings.fps, size=(settings.width, settings.height))
+            voice=voices[index]
+            aligned=retime_to_audio(scene,voice["duration"])
+            clip=root/"clips"/f"clip_{index:03}.mp4"
+            clip.parent.mkdir(parents=True,exist_ok=True)
+            clip_renderer(aligned,bg,sprites,voice["path"],clip,
+                          fps=settings.fps,size=(settings.width,settings.height))
             clips.append(clip)
-            if index % 5 == 0 or index == len(scenes)-1:
-                stage("scene_render", index=index+1, total=len(scenes),
+            if index%5==0 or index==len(scenes)-1:
+                stage("scene_render",index=index+1,total=len(scenes),
                       narration_seconds=round(sound_total,2))
         atomic_json(root/"licencas_e_assets.json", asset_log)
         # Créditos rastreáveis; não substitui a revisão das condições CC BY-SA.
