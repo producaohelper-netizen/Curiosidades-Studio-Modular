@@ -69,7 +69,19 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
     root=Path(workspace);root.mkdir(parents=True,exist_ok=True)
     work=root/scene_id
     work.mkdir(parents=True,exist_ok=True)
-    lookup=query or prompt
+    # Retomar renderizações interrompidas sem baixar as mesmas imagens.
+    manifest=work/"asset.json"
+    if manifest.exists():
+        try:
+            cached=SceneAsset(**json.loads(manifest.read_text(encoding="utf8")))
+            file=Path(cached.file).resolve() if cached.file else None
+            if (cached.scene_id==scene_id and cached.prompt==prompt and
+                file is not None and file.is_file() and
+                file.is_relative_to(work.resolve()) and file.stat().st_size>1024):
+                return cached
+        except (ValueError,TypeError,OSError,KeyError):
+            pass
+    lookup=query or scene.get("search_terms_en") or prompt
     search=commons_search or search_commons
     download=downloader or download_commons
     candidates=[];images=[];errors=[]
