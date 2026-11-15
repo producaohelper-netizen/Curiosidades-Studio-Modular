@@ -111,6 +111,28 @@ Não inclua instruções de animação dentro da fala.
             "narration": narration, "words": words}
 
 
+def check_character_consistency(scenes):
+    """One recurring actor ID must never turn into a different asset."""
+    actors = {}
+    assets = {}
+    for scene in scenes:
+        for actor in scene["actors"]:
+            name = actor["id"].casefold().strip()
+            kind = actor["kind"]
+            asset = actor["asset_id"]
+            if name in actors and actors[name] != (kind, asset):
+                raise ProductionError(
+                    f"Personagem recorrente '{name}' mudou kind/asset_id entre cenas"
+                )
+            if asset in assets and assets[asset] != kind:
+                raise ProductionError(
+                    f"asset_id '{asset}' reutilizado por tipos incompatíveis"
+                )
+            actors[name] = kind, asset
+            assets[asset] = kind
+    return {"recurring_ids": len(actors), "unique_assets": len(assets)}
+
+
 def assert_preflight(settings):
     missing = []
     for item in ("ffmpeg", "ffprobe", settings.piper):
@@ -218,8 +240,9 @@ def run(settings: Settings, *, story_writer=write_story,
                                   f"recebeu {len(scenes)}")
         for scene in scenes:
             validate(scene)
+        identity=check_character_consistency(scenes)
         atomic_json(root/"storyboard.json", storyboard)
-        stage("visual_plan", scenes=len(scenes))
+        stage("visual_plan", scenes=len(scenes), **identity)
         clips = []
         sound_total = 0.
         asset_log = []
