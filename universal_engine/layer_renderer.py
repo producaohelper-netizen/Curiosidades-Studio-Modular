@@ -14,6 +14,7 @@ from .camera import apply_camera
 from .sprites import select_frame
 from .effects import paint_effect
 from .deformation import organic_sway
+from .environment_motion import draw_environment
 
 class RenderError(RuntimeError):
     pass
@@ -35,6 +36,9 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
     if not isinstance(background,Image.Image):
         raise RenderError("Cenario de fundo ausente")
     canvas=background.copy() if background.mode=="RGBA" and background.size==size else cover(background.convert("RGBA"),size)
+    if scene.get("visual_style")=="cartoon":
+        draw_environment(canvas,scene.get("setting",{}).get("kind",""),
+                         time_sec,scene.get("scene_id",""))
     poses=motion(scene,time_sec)
     for actor in scene["actors"]:
         name=actor["id"]
