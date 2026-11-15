@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'ci/live_three_topics.py'
+      - 'universal_engine/visual_matcher.py'
+      - 'universal_engine/visual_pipeline.py'
       - '.github/workflows/live-three-topics.yml'
 jobs:
   real_pipeline:
