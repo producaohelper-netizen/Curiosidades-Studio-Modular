@@ -118,7 +118,16 @@ def motion(scene: dict, at: float) -> dict:
             dy=float(step.get("to_y",sy))
             if action in ("approach","follow"):
                 other=state[step["towards"]]
-                dx,dy=other["x"]-.12,other["y"]
+                # Stop on the approaching side, keeping clear visual space
+                # between the characters rather than crossing through them.
+                # Reuse the original side from the actor's initial position.
+                original=next(a for a in scene["actors"] if a["id"]==target)
+                focus=next(a for a in scene["actors"] if a["id"]==step["towards"])
+                side=1 if float(original.get("x",.5))>=float(focus.get("x",.5)) else -1
+                gap=float(step.get("gap",.22))
+                gap=max(.12,min(.4,gap))
+                dx=max(.08,min(.92,other["x"]+side*gap))
+                dy=other["y"]
             if action=="escape" and "to_x" not in step:
                 dx=.06 if sx<.5 else .94
             s["x"]=sx+(dx-sx)*ease
