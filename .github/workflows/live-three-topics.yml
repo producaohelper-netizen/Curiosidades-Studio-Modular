@@ -28,7 +28,9 @@ jobs:
           curl --fail --location --retry 3 "$BASE/pt_BR-faber-medium.onnx.json" -o voice/pt_BR-faber-medium.onnx.json
           test "$(stat -c%s voice/pt_BR-faber-medium.onnx)" -gt 30000000
       - name: Executar pipelines reais em três assuntos
-        run: python -u ci/live_three_topics.py | tee live-test.log
+        run: |
+          set -o pipefail
+          PYTHONPATH=. python -u ci/live_three_topics.py | tee live-test.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
