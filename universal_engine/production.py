@@ -15,6 +15,9 @@ import os
 import shutil
 import subprocess
 import time
+import re
+import uuid
+import unicodedata
 
 from .trends import fetch_trends, top_five
 from .storyboard_planner import plan_script
@@ -243,17 +246,27 @@ def run(settings: Settings, *, story_writer=write_story,
         tts=generate_piper, clip_renderer=render_clip,
         topic_selector=choose_topic, mux=concatenate, probe=probe_duration):
     assert_preflight(settings)
-    root = Path(settings.workspace)
-    root.mkdir(parents=True, exist_ok=True)
-    status_path = root / "status.json"
-    report = {"status": "started", "stages": [], "issues": [],
-              "artistic_approval": "NOT_PERFORMED"}
+    workspace=Path(settings.workspace)
+    workspace.mkdir(parents=True,exist_ok=True)
+    topic=topic_selector(settings)
+    title=str(topic.get("title","curiosidade"))
+    normalized=unicodedata.normalize("NFKD",title)
+    slug=re.sub(r"[^a-z0-9]+","-",normalized.encode("ascii","ignore").decode("ascii").lower())
+    slug=slug.strip("-")[:44] or "curiosidade"
+    episode_id=time.strftime("%Y%m%d_%H%M%S")+"_"+slug+"_"+uuid.uuid4().hex[:6]
+    root=workspace/"episodes"/episode_id
+    root.mkdir(parents=True,exist_ok=False)
+    status_path=root/"status.json"
+    report={"status":"started","stages":[],"issues":[],
+            "artistic_approval":"NOT_PERFORMED",
+            "workspace":str(root),"topic":topic}
+    atomic_json(workspace/"ultimo_episodio.json",
+                {"workspace":str(root),"episode_id":episode_id,"topic":topic})
     def stage(name, **extras):
         report["stages"].append({"stage": name, "at": time.time(), **extras})
         atomic_json(status_path, report)
         print(name, flush=True)
     try:
-        topic = topic_selector(settings)
         stage("topic", topic=topic)
         story = story_writer(topic["title"], settings.llm)
         atomic_json(root/"roteiro.json", story)
