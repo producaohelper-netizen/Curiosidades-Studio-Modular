@@ -64,3 +64,11 @@ Melhorias integradas após a comparação com os três clipes reais:
 **Limitações ainda não resolvidas:** o executável não inclui instaladores completos de Python/Ollama/ComfyUI nem os pesos de IA; animação plenamente articulada de personagens arbitrários ainda não foi demonstrada; o motor 2D ilustrado precisa de execução com modelos e assets reais em múltiplos vídeos completos, com avaliação lado a lado da referência. Os clipes anteriores sobre polvo, Terra e vulcão comprovam apenas a integração técnica e continuam reprovados artisticamente.
 
 Testes de unidade do motor de cenários ilustrados em [Windows e Linux](https://github.com/producaohelper-netizen/Curiosidades-Studio-Modular/actions/runs/43667959659) concluíram com sucesso. Isto **não significa** aprovação para YouTube.
+
+## Progresso adicional — motor universal sem GPU (em desenvolvimento)
+
+- Wikimedia Commons vetorial: teste real encontrou ilustrações transparentes licenciadas para **polvo** (CC0) e **vulcão** (CC BY-SA 4.0), mas **não encontrou Terra** com o limiar visual conservador. O resultado 2/3 não é cobertura universal.
+- Criado fallback local para desenhos 2D por formas com Ollama + Pillow (JSON estritamente validado, sem execução de código arbitrário). O modelo pequeno Qwen2.5 1.5B falhou ao emitir JSON completo nas duas primeiras execuções; uma versão compacta com JSON Schema está em validação e NÃO foi aprovada.
+- Movimento: corrigidos saltos de atores e órbitas; adicionados efeitos temporais de tinta, erupção e deformação orgânica sutil em animais 2D. Isso não substitui rigging/articulação profissional.
+- Preparação inicial: bibliotecas gratuitas e voz Piper são obtidas quando necessário; detecção de FFmpeg anterior e inicialização automática do Ollama instalado. Ainda depende de Python existente, acesso a modelos e eventuais serviços locais.
+- [Testes unitários Windows/Linux das mudanças](https://github.com/producaohelper-netizen/Curiosidades-Studio-Modular/actions/runs/43669742260): aprovados. **Sem validação artística final, sem comprovação de três episódios completos com um clique.**
