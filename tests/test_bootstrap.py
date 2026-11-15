@@ -14,7 +14,7 @@ class BootstrapTests(unittest.TestCase):
             model=Path(temp)/"pt_BR-faber-medium.onnx"
             with model.open("wb") as stream:
                 stream.seek(30_000_002);stream.write(b"x")
-            Path(str(model)+".json").write_text('{"audio":{"sample_rate":22050}}')
+            Path(str(model)+".json").write_text('{"audio":{"sample_rate":22050}}'+" "*400)
             def fail_request(*args,**kwargs):
                 raise AssertionError("Cached files should not be downloaded")
             self.assertEqual(download_model(model,opener=fail_request),model)
