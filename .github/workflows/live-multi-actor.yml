@@ -1,0 +1,43 @@
+name: Cena real com dois personagens licenciados
+on:
+  push:
+    paths:
+      - 'ci/live_multi_actor.py'
+      - 'universal_engine/multiactor.py'
+      - '.github/workflows/live-multi-actor.yml'
+  workflow_dispatch:
+jobs:
+  real_characters:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar mídia local gratuita
+        run: |
+          python -m pip install 'Pillow>=11,<13' open_clip_torch piper-tts
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - name: Baixar voz brasileira Piper
+        run: |
+          mkdir -p voice
+          BASE='https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/pt/pt_BR/faber/medium'
+          curl -fsSL --retry 3 "$BASE/pt_BR-faber-medium.onnx" -o voice/pt_BR-faber-medium.onnx
+          curl -fsSL --retry 3 "$BASE/pt_BR-faber-medium.onnx.json" -o voice/pt_BR-faber-medium.onnx.json
+      - name: Buscar ilustrações e compor cena com dois atores e voz real
+        run: |
+          set -o pipefail
+          PYTHONPATH=. python -u ci/live_multi_actor.py | tee multi-actor-test.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: amostra-dois-personagens-nao-final
+          path: |
+            real-multi-actor/clip.mp4
+            real-multi-actor/report.json
+            real-multi-actor/assets/scene_backgrounds/*_credits.json
+            real-multi-actor/assets/characters/*.png
+            multi-actor-test.log
+          retention-days: 7
