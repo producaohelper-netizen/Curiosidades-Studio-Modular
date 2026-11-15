@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'ci/live_vector_llm.py'
+      - 'universal_engine/vector_drawer.py'
       - '.github/workflows/live-vector-llm.yml'
   workflow_dispatch:
 jobs:
