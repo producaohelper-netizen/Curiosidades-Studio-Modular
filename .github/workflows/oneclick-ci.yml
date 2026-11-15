@@ -1,0 +1,61 @@
+name: Executavel unico Windows - integracao de 50 cenas
+on:
+  push:
+    paths:
+      - 'oneclick/**'
+      - 'universal_engine/**'
+      - 'tests/**'
+      - '.github/workflows/oneclick-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  windows_oneclick:
+    runs-on: windows-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar dependencias de testes
+        run: python -m pip install 'Pillow>=11,<13'
+      - name: Testes do fluxo de cinquenta cenas e sprites
+        run: python -m unittest discover -s tests -v
+      - name: Compilar executavel Windows
+        shell: pwsh
+        run: |
+          Push-Location oneclick
+          go build -trimpath -ldflags="-s -w" -o "../CuriosidadesStudio_Unificado_Windows_CANDIDATO.exe" .
+          if ($LASTEXITCODE -ne 0) { throw "Erro na compilação do iniciador" }
+          Pop-Location
+      - name: Verificar executavel criado
+        shell: pwsh
+        run: |
+          $exe = Get-Item "CuriosidadesStudio_Unificado_Windows_CANDIDATO.exe"
+          Write-Host "Binario: $($exe.Length) bytes"
+          if ($exe.Length -lt 100000) { throw "Arquivo muito pequeno" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: candidato-windows-sem-aprovacao-artistica
+          path: CuriosidadesStudio_Unificado_Windows_CANDIDATO.exe
+          retention-days: 7
+
+  linux_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'Pillow>=11,<13'
+      - run: python -m unittest discover -s tests -v
+      - name: Testar compilacao do launcher
+        working-directory: oneclick
+        run: go test ./...
