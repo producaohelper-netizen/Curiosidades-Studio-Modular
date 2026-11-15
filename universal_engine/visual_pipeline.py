@@ -55,7 +55,12 @@ def download_commons(item: MediaCandidate, destination: str|Path):
     with Image.open(BytesIO(data)) as im:
         if im.width*im.height>28_000_000:
             raise AssetPipelineError("Imagem excede limite de pixels")
-        image=im.convert("RGB")
+        # Keep alpha on SVG raster thumbnails and illustrated PNGs. A
+        # transparent drawing is a real reusable layer, not a photograph
+        # that needs destructive AI masking and inpainting.
+        rgba=im.convert("RGBA")
+        alpha=rgba.getchannel("A").getextrema()
+        image=rgba if alpha[0]<255 else im.convert("RGB")
         image.thumbnail((1920,1080))
         dst=Path(destination)
         dst.parent.mkdir(parents=True,exist_ok=True)
