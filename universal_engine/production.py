@@ -299,6 +299,23 @@ def run(settings: Settings, *, story_writer=write_story,
                 stage("scene_render", index=index+1, total=len(scenes),
                       narration_seconds=round(sound_total,2))
         atomic_json(root/"licencas_e_assets.json", asset_log)
+        # Créditos rastreáveis; não substitui a revisão das condições CC BY-SA.
+        credits=[]
+        seen=set()
+        for item in asset_log:
+            source=item.get("original_url") or item.get("file")
+            if not source or source in seen:
+                continue
+            seen.add(source)
+            credits.append(
+                "Fonte: "+str(item.get("source",""))+"\n"+
+                "Autor/crédito: "+str(item.get("attribution",""))+"\n"+
+                "Licença: "+str(item.get("license_name",""))+"\n"+
+                "Link: "+str(item.get("original_url",""))+"\n"
+            )
+        (root/"creditos_para_descricao_youtube.txt").write_text(
+            "CRÉDITOS DE IMAGENS — verificar licenças antes de publicar\n\n"+
+            "\n".join(credits),encoding="utf8")
         if not 285 <= sound_total <= 315:
             raise ProductionError(f"Narração total {sound_total:.1f}s fora de 5 minutos; "
                                   "não acelerar nem cortar artificialmente")
