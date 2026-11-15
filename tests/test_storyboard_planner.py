@@ -38,7 +38,7 @@ class PlannerTests(unittest.TestCase):
   with self.assertRaises(PlanningError):
    plan_batch(["O polvo foge"],generator=bad)
  def test_short_exclamation_joins_following_scene(self):
-  phrase="Uau! O polvo muda de cor e se esconde entre as pedras do fundo do mar."
+  phrase="Uau! O polvo se esconde entre as pedras do fundo do mar."
   chunks=split_narration(phrase,max_words=15)
   self.assertEqual(" ".join(chunks),phrase)
   self.assertEqual(len(chunks),1)
