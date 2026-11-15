@@ -27,6 +27,7 @@ from .layer_renderer import render_clip
 from .scenespec import validate
 from .sprite_factory import produce_sprite
 from .photo_layers import extract_for_scene
+from .illustrated_layers import has_alpha, alpha_sprite, create_background
 from .foreground_match import verify_foreground
 from .comfy_auto import auto_workflow, ComfySetupError
 
@@ -186,7 +187,13 @@ def prepare_scene_assets(scene, work: Path, settings: Settings, *,
         background=work/"scene_backgrounds"/(scene_id+".png")
         if not background.is_file():
             temporary=dst if not dst.is_file() else work/"scene_backgrounds"/(scene_id+"_discard.png")
-            extract_for_scene(scene,result.file,temporary,background)
+            if scene.get('visual_style')=='cartoon' and has_alpha(result.file):
+                if not dst.is_file():alpha_sprite(result.file,dst)
+                create_background(scene.get('setting',{}).get('kind','nature'),background,identity=scene_id)
+            else:
+                extract_for_scene(scene,result.file,temporary,background)
+                if scene.get('visual_style')=='cartoon':
+                    create_background(scene.get('setting',{}).get('kind','nature'),background,identity=scene_id)
             try:
                 verification=verify_foreground(actor,scene,temporary)
                 result.reason += "; OpenCLIP do recorte: "+str(round(verification["score"],3))
