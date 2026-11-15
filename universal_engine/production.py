@@ -72,9 +72,28 @@ def choose_topic(settings: Settings):
         raise ProductionError("Não foi possível obter tendências reais: " + str(exc)) from exc
     if not trends:
         raise ProductionError("Não há tendência apropriada para vídeo educativo")
-    t = trends[0]
-    return {"title": t["title"], "source": t["source"],
-            "trending": True, "traffic_label": t["traffic_label"]}
+    # Prefer an unused trend among the currently available candidates. Read
+    # only local episode metadata; no extra account, paid API or external service.
+    recent = []
+    episode_dir = Path(settings.workspace) / "episodes"
+    if episode_dir.is_dir():
+        for item in sorted(episode_dir.glob("*/status.json"), reverse=True)[:100]:
+            try:
+                data = json.loads(item.read_text(encoding="utf8"))
+                previous = data.get("topic", {})
+                if isinstance(previous, dict) and previous.get("title"):
+                    recent.append(str(previous["title"]).casefold().strip())
+            except (OSError, ValueError, TypeError):
+                continue
+    selected = next((t for t in trends
+                     if str(t["title"]).casefold().strip() not in recent), None)
+    if selected is None:
+        raise ProductionError(
+            "Todas as tendências disponíveis já foram utilizadas. "
+            "Aguarde novas tendências ou informe CSTUDIO_TOPIC para escolher outro assunto."
+        )
+    return {"title": selected["title"], "source": selected["source"],
+            "trending": True, "traffic_label": selected["traffic_label"]}
 
 
 def _ollama_json(prompt: str, model: str, timeout=900, requester=None):
