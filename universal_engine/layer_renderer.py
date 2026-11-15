@@ -12,7 +12,7 @@ import math, subprocess, wave, json
 from .scenespec import validate, motion
 from .camera import apply_camera
 from .sprites import select_frame
-from .effects import paint_effect
+from .effects import paint_effect,paint_reaction
 from .deformation import organic_sway
 from .environment_motion import draw_environment
 
@@ -88,6 +88,12 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
             paint_effect(canvas,effect,ex,ey,radius,
                          transform.get("effect_elapsed",0),name)
         canvas.alpha_composite(layer,pos)
+        if (actor.get("kind") in ("animal","person") and
+            "reaction_elapsed" in transform):
+            paint_reaction(canvas,int(transform["x"]*w),
+                           int(transform["y"]*h-py*.55),
+                           px*.24,transform["reaction_elapsed"],
+                           transform.get("emotion","surprised"))
         if transform.get("highlight"):
             d=ImageDraw.Draw(canvas)
             x=int(transform["x"]*w);y=int(transform["y"]*h)
