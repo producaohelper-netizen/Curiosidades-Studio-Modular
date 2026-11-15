@@ -55,3 +55,27 @@ def paint_effect(canvas, effect, x, y, radius, age, identity=""):
             draw.line((xx-rr,yy,xx+rr,yy),fill=(255,236,140,220),width=3)
             draw.line((xx,yy-rr,xx,yy+rr),fill=(255,236,140,220),width=3)
     canvas.alpha_composite(overlay)
+
+def paint_reaction(canvas, x, y, radius, age, emotion="surprised"):
+    """Short expressive impact lines for any 2D actor, never a fixed character."""
+    if age<0 or age>=1.3:
+        return
+    strength=max(0.,1-age/1.3)
+    overlay=Image.new("RGBA",canvas.size,(0,0,0,0))
+    d=ImageDraw.Draw(overlay)
+    radius=max(9,float(radius))
+    em=str(emotion).lower()
+    rgb=(253,229,109) if em in ("surprised","excited","happy") else (160,220,251)
+    if em in ("scared","sad","worried"):
+        rgb=(149,207,245)
+    for i in range(5):
+        theta=(-math.pi*.92)+i*(math.pi*.92)/4
+        near=radius*.6
+        far=radius*(1.12+.25*strength)
+        x1=x+math.cos(theta)*near
+        y1=y+math.sin(theta)*near
+        x2=x+math.cos(theta)*far
+        y2=y+math.sin(theta)*far
+        d.line((x1,y1,x2,y2),fill=(*rgb,round(210*strength)),
+               width=max(2,round(radius*.08)))
+    canvas.alpha_composite(overlay)
