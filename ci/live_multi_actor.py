@@ -36,10 +36,12 @@ scene={
   {"at":.2,"action":"enter","target":"shark","to_x":.79,"duration":.45},
   {"at":1.0,"action":"approach","target":"shark","towards":"octopus","duration":1.5},
   {"at":2.8,"action":"react","target":"octopus","emotion":"surprised"},
+  {"at":3.6,"action":"camera_push","target":"octopus","zoom":1.20,"duration":.7},
   {"at":4.0,"action":"emit_particles","target":"octopus","effect":"ink_cloud"},
   {"at":5.5,"action":"escape","target":"octopus","to_x":.05,
    "to_y":.42,"duration":2.4},
-  {"at":5.8,"action":"react","target":"shark","emotion":"confused"}
+  {"at":5.8,"action":"react","target":"shark","emotion":"confused"},
+  {"at":6.5,"action":"camera_pan","to_x":.58,"to_y":.50,"duration":1.2}
  ]
 }
 validate(scene)
