@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-15",
+  "run_id": 43732088376,
+  "asset_id": 14169146887,
+  "video": "real-multi-actor/clip.mp4",
+  "duration_seconds": 9.5666,
+  "technical_render": "PASS",
+  "artistic_review": "REJECTED",
+  "problems": [
+    "Shark appears as annotated scientific diagram rather than a clean cartoon character",
+    "Shark position crosses/overlaps the octopus during approach",
+    "Scene lacks enough character articulation to match user reference"
+  ],
+  "corrective_changes": [
+    "CLIP diagram-vs-character selection filter plus filename/description filter",
+    "Direction-aware approach with spatial gap",
+    "Swimming tail motion for fish"
+  ],
+  "remaining_requirements": [
+    "Re-render with new asset selection and inspect image",
+    "Review script-audio-motion timing",
+    "Three distinct complete 285-315 sec episodes",
+    "Windows one-click end-to-end with local models"
+  ],
+  "release_approved": false
+}
