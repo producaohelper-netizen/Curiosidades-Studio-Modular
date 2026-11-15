@@ -16,6 +16,7 @@ BACKGROUNDS={
     "nature":("#133c54","#6e9b73","#a4bd91"),
     "desert":("#6b4a5d","#cd9671","#e4bb85"),
     "history":("#49475c","#b49779","#d0b88e"),
+    "volcanic":("#273147","#6c6069","#b0896f"),
 }
 DEFAULT=("#172b48","#557b8d","#a0adb0")
 
@@ -84,6 +85,22 @@ def create_background(kind, output, *, size=(1280,720), identity="default"):
             rad=rng.randrange(5,22)
             draw.ellipse((x-rad,y-rad,x+rad,y+rad),
                          outline="#76bdcc",width=2)
+    elif kind=="volcanic":
+        # Original rocky terrain suitable for volcanoes, geology and eruptions,
+        # leaving the centre free for the featured subject.
+        draw.polygon([(0,int(h*.67)),(int(w*.14),int(h*.39)),
+                      (int(w*.32),int(h*.69)),(int(w*.48),int(h*.53)),
+                      (int(w*.65),int(h*.70)),(w,int(h*.60)),(w,h),(0,h)],
+                     fill="#62565d")
+        draw.polygon([(0,int(h*.76)),(int(w*.16),int(h*.59)),
+                      (int(w*.34),int(h*.86)),(int(w*.53),int(h*.76)),
+                      (int(w*.78),int(h*.82)),(w,int(h*.73)),(w,h),(0,h)],
+                     fill="#504951")
+        for i in range(11):
+            x=rng.randrange(w)
+            y=rng.randrange(int(h*.73),h)
+            rr=rng.randrange(max(3,w//180),max(8,w//55))
+            draw.ellipse((x-rr,y-rr//2,x+rr,y+rr//2),fill="#6a6263")
     elif kind in ("forest","nature"):
         draw.ellipse((-w//5,h*.55,w*.7,h*1.35),fill="#366b60")
         draw.ellipse((w*.4,h*.61,w*1.3,h*1.4),fill="#2c655d")
