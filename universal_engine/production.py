@@ -21,7 +21,8 @@ import unicodedata
 
 from .trends import fetch_trends, top_five
 from .storyboard_planner import plan_script
-from .visual_pipeline import build_scene_asset
+from .visual_pipeline import build_scene_asset, SceneAsset
+from .vector_drawer import generate_actor
 from .narration import generate_piper, retime_to_audio
 from .layer_renderer import render_clip
 from .scenespec import validate
@@ -50,6 +51,7 @@ class Settings:
     approval_required: bool = True
     sprite_workflow: str | None = None
     auto_comfy: bool = True
+    vector_fallback: bool = True
 
 
 def atomic_json(path: Path, obj):
@@ -175,7 +177,24 @@ def prepare_scene_assets(scene, work: Path, settings: Settings, *,
     result = get_asset(scene, work / "image_search",
                        comfy_workflow=settings.comfy_workflow)
     if not result.file:
-        raise ProductionError(f"{scene_id}: falta imagem pertinente ao roteiro: {result.reason}")
+        if not settings.vector_fallback:
+            raise ProductionError(f"{scene_id}: falta imagem pertinente ao roteiro: {result.reason}")
+        bg=work/"scene_backgrounds"/(scene_id+".png")
+        create_background(scene.get("setting",{}).get("kind","nature"),bg,identity=scene_id)
+        sprites={}
+        try:
+            for actor in scene["actors"]:
+                dest=asset_path(work/"characters",actor["asset_id"])
+                generate_actor(actor,dest,model=settings.llm)
+                verify_foreground(actor,scene,dest,minimum=.16)
+                sprites[actor["asset_id"]]=dest
+        except Exception as exc:
+            raise ProductionError(f"{scene_id}: ilustração vetorial inválida: {exc}") from exc
+        asset=SceneAsset(scene_id,str(bg),"local-ollama-vector","",True,
+                         "Desenho local por formas: revisão artística obrigatória",
+                         scene.get("visual_query_en",""),"local-generated-unreviewed","", "",
+                         scene.get("visual_style","cartoon"))
+        return bg,sprites,asset
     if not result.license_name and result.source != "local-comfyui":
         raise ProductionError(f"{scene_id}: imagem sem licença rastreável")
     sprites = {}
