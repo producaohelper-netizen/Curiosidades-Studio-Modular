@@ -49,3 +49,18 @@ Novo fluxo `python -m universal_engine.production` com `oneclick/main.go`:
 - falha explícita quando cenas, direitos, áudio ou duração não atendem aos critérios.
 
 **Evidência:** [GitHub Actions Piper real](https://github.com/producaohelper-netizen/Curiosidades-Studio-Modular/actions/runs/43658995573) passou. [Compilação e integração simulada](https://github.com/producaohelper-netizen/Curiosidades-Studio-Modular/actions/runs/43659910434) não provam produção real. A tentativa de três assuntos reais encontrou falhas de correspondência/qualidade; os curtos vídeos inspecionados tinham borrões de recorte e não eram semelhantes à amostra. Por isso foi adicionado controle de estilo 2D. **Nenhum .exe foi homologado como produto final**, a instalação local de ComfyUI/checkpoints depende do computador, e nenhum vídeo de 5 minutos com esse novo fluxo passou revisão artística ou testes sobre três temas reais.
+
+
+## Continuação: motor ilustrado reutilizável e isolamento de episódios
+
+Melhorias integradas após a comparação com os três clipes reais:
+- cada execução cria `episodes/AAAAmmdd_HHMMSS_assunto_id`, preservando roteiros, imagens, vozes e MP4 de assuntos diferentes sem mistura;
+- movimentos consecutivos passam a interpolar a partir da posição anterior, sem teletransporte; ação `orbit` possui movimento real;
+- o cache de imagens reconhece o estilo escolhido, não reaproveitando fotos antigas quando a produção está configurada para desenho animado;
+- buscas Wikimedia priorizam ilustrações vetoriais (`filetype:drawing`); PNGs com transparência são preservados como sprites originais;
+- cenas ilustradas podem utilizar fundos 2D gerados por código, sem cicatrizes fotográficas deixadas por inpainting;
+- o inicializador Windows inclui uma etapa de preparação das dependências Python e modelo Piper se o Python já estiver instalado.
+
+**Limitações ainda não resolvidas:** o executável não inclui instaladores completos de Python/Ollama/ComfyUI nem os pesos de IA; animação plenamente articulada de personagens arbitrários ainda não foi demonstrada; o motor 2D ilustrado precisa de execução com modelos e assets reais em múltiplos vídeos completos, com avaliação lado a lado da referência. Os clipes anteriores sobre polvo, Terra e vulcão comprovam apenas a integração técnica e continuam reprovados artisticamente.
+
+Testes de unidade do motor de cenários ilustrados em [Windows e Linux](https://github.com/producaohelper-netizen/Curiosidades-Studio-Modular/actions/runs/43667959659) concluíram com sucesso. Isto **não significa** aprovação para YouTube.
