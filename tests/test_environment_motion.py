@@ -11,7 +11,7 @@ class EnvironmentMotionTests(unittest.TestCase):
                     return draw_environment(im,setting,t,"scene-01")
                 start=make(.2)
                 later=make(3.1)
-                self.assertIsNotNone(ImageChops.difference(start,later).getbbox())
+                self.assertIsNotNone(ImageChops.difference(start.convert('RGB'),later.convert('RGB')).getbbox())
                 self.assertEqual(make(3.1).tobytes(),later.tobytes())
     def test_underwater_light_beams_keep_transparency(self):
         base=Image.new("RGBA",(320,180),(12,52,83,255))
