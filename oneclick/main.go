@@ -79,6 +79,15 @@ func run(base string)error{
 func main(){
  exe,e:=os.Executable();if e!=nil{fmt.Fprintln(os.Stderr,e);os.Exit(1)}
  base:=filepath.Dir(exe)
+ if len(os.Args)>1 && os.Args[1]=="--verificar-pacote" {
+  for _,name:=range []string{"universal_engine/production.py","universal_engine/bootstrap.py","universal_engine/layer_renderer.py","universal_engine/mouth_overlay.py","qa/video_integrity_audit.py"} {
+   if _,err:=os.Stat(filepath.Join(base,filepath.FromSlash(name)));err!=nil {
+    fmt.Fprintln(os.Stderr,"Pacote incompleto:",name,err);os.Exit(2)
+   }
+  }
+  fmt.Println("Pacote do executavel completo; geracao real ainda nao validada.")
+  return
+ }
  if e=run(base);e!=nil{
   fmt.Fprintln(os.Stderr,"Produção interrompida:",e)
   fmt.Fprintln(os.Stderr,"Verifique status.json na pasta de trabalho.")
