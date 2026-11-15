@@ -140,6 +140,10 @@ def motion(scene: dict, at: float) -> dict:
             s["scale"]=1+(size-1)*(math.sin(p*math.pi) if action=="pulse" else ease)
         elif action=="react":
             s["emotion"]=str(step.get("emotion","surprised"))
+            s["reaction_elapsed"]=max(0.0,at-start)
+            # A visible but restrained anticipation/recoil lasting <1 second.
+            u=min(1.,max(0.,(at-start)/.75))
+            s["scale"]=max(s["scale"],1.+.09*math.sin(math.pi*u))
         elif action=="highlight":
             s["highlight"]=True
         elif action in ("emit_particles","reveal"):
