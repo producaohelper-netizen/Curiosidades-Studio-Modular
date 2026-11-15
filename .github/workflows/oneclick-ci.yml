@@ -4,6 +4,7 @@ on:
     paths:
       - 'oneclick/**'
       - 'universal_engine/**'
+      - 'qa/**'
       - 'tests/**'
       - '.github/workflows/oneclick-ci.yml'
   workflow_dispatch:
@@ -40,7 +41,7 @@ jobs:
       - name: Empacotar programa e código, sem prometer publicação
         shell: pwsh
         run: |
-          Compress-Archive -Path 'CuriosidadesStudio_Unificado_Windows_CANDIDATO.exe','universal_engine','requirements-local.txt','README.md' -DestinationPath 'CuriosidadesStudio_Candidato_Desenvolvimento.zip' -Force
+          Compress-Archive -Path 'CuriosidadesStudio_Unificado_Windows_CANDIDATO.exe','universal_engine','qa','requirements-local.txt','README.md' -DestinationPath 'CuriosidadesStudio_Candidato_Desenvolvimento.zip' -Force
           if (-not (Test-Path 'CuriosidadesStudio_Candidato_Desenvolvimento.zip')) { throw 'Pacote ZIP ausente' }
       - uses: actions/upload-artifact@v4
         with:
