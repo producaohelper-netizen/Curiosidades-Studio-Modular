@@ -13,6 +13,7 @@ from .scenespec import validate, motion
 from .camera import apply_camera
 from .sprites import select_frame
 from .effects import paint_effect
+from .deformation import organic_sway
 
 class RenderError(RuntimeError):
     pass
@@ -62,6 +63,9 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
                 layer=layer.rotate(-angle,resample=Image.Resampling.BICUBIC,expand=True)
             if layer_cache is not None and len(layer_cache)<120:
                 layer_cache[key]=layer.copy()
+        if (actor.get("kind")=="animal" and sheet is None and
+            scene.get("visual_style")=="cartoon" and actor.get("organic_sway",True)):
+            layer=organic_sway(layer,time_sec)
         alpha=float(transform.get("opacity",1))
         if alpha<1:
             layer.putalpha(layer.getchannel("A").point(lambda x:int(x*alpha)))
