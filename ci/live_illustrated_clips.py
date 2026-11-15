@@ -39,7 +39,7 @@ specs=[
   "Um vulcão parece uma montanha bem calma. Só que lá dentro existe rocha derretida, "
   "chamada magma. Quando ela chega à superfície, vira lava e pode escorrer pelas encostas.",
   "duration_target_seconds":11,
-  "setting":{"kind":"nature"},"visual_style":"cartoon",
+  "setting":{"kind":"volcanic"},"visual_style":"cartoon",
   "visual_query_en":"A vivid drawing of an erupting volcano with a recognizable mountain shape",
   "search_terms_en":"volcano",
   "visual_fact":"A lava é magma que chega à superfície.",
