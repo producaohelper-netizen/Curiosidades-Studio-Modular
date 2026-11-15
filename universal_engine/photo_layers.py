@@ -34,8 +34,18 @@ def photo_layers(image_path: str | Path, background_out: str | Path,
     with Image.open(source) as im:
         original=im.convert("RGB")
     with Image.open(foreground_out) as im:
-        alpha=im.getchannel("A")
-    mask=alpha.resize(original.size,Image.Resampling.LANCZOS)
+        rgba=im.convert("RGBA")
+        alpha=rgba.getchannel("A")
+        # Crop to visible subject: leaving the full photographic canvas around
+        # the cutout makes the character almost invisible after scaling.
+        mask=alpha.resize(original.size,Image.Resampling.LANCZOS)
+        bbox=alpha.point(lambda x:255 if x>32 else 0).getbbox()
+        if bbox is None:
+            raise LayerExtractionError("Máscara de sujeito vazia")
+        pad=max(6,round(min(rgba.size)*.035))
+        l,t,r,b=bbox
+        bbox=(max(0,l-pad),max(0,t-pad),min(rgba.width,r+pad),min(rgba.height,b+pad))
+        rgba.crop(bbox).save(foreground_out,"PNG")
     if background_filler is not None:
         bg=background_filler(original,mask)
     else:
