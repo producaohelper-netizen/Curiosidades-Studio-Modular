@@ -113,9 +113,12 @@ Falas (não altere nem reescreva; serão inseridas pelo programa):
                 if actor["kind"]!=previous["kind"]:
                     raise PlanningError(f"Ator {ident} mudou de tipo entre cenas")
                 actor["asset_id"]=previous["asset_id"]
+                if previous.get("visual_query_en"):
+                    actor["visual_query_en"]=previous["visual_query_en"]
             else:
                 known_actors[ident]={"kind":actor["kind"],
-                                     "asset_id":actor["asset_id"]}
+                                     "asset_id":actor["asset_id"],
+                                     "visual_query_en":actor.get("visual_query_en","")}
         try:validate(scene)
         except SceneError as err:raise PlanningError(f"SceneSpec inválido: {err}") from err
         done.append(scene)
