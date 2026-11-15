@@ -16,6 +16,7 @@ import sys
 import sysconfig
 import tempfile
 from urllib.request import Request, urlopen
+import time
 
 VOICE_BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/pt/pt_BR/faber/medium"
 VOICE_NAME = "pt_BR-faber-medium.onnx"
@@ -111,10 +112,55 @@ def check_runtime(*, voice_path, packages=None, install=True, downloader=downloa
             "ollama":"requires_preinstalled_local_model",
             "publisher_approval":"not_automated"}
 
-def setup(workspace,voice_model=None):
+def ensure_ollama(root,model="qwen2.5:7b",fetcher=None):
+    """Start installed Ollama when stopped; pull model only if absent."""
+    if fetcher is None:
+        def fetcher():
+            with urlopen("http://127.0.0.1:11434/api/tags",timeout=5) as response:
+                return json.load(response)
+    try:
+        data=fetcher()
+    except (OSError,ValueError):
+        executable=shutil.which("ollama")
+        if not executable and os.name=="nt":
+            candidate=Path(os.environ.get("LOCALAPPDATA",""))/"Programs"/"Ollama"/"ollama.exe"
+            if candidate.is_file():executable=str(candidate)
+        if not executable:
+            raise BootstrapError("Ollama não encontrado; instale o aplicativo gratuito")
+        logfile=Path(root)/"logs"/"ollama-server.log"
+        logfile.parent.mkdir(parents=True,exist_ok=True)
+        with logfile.open("ab") as stream:
+            options={"stdin":subprocess.DEVNULL,"stdout":stream,"stderr":stream}
+            if os.name=="nt":
+                options["creationflags"]=getattr(subprocess,"DETACHED_PROCESS",0x00000008)
+            else:
+                options["start_new_session"]=True
+            subprocess.Popen([executable,"serve"],**options)
+        data=None
+        for i in range(25):
+            time.sleep(1)
+            try:
+                data=fetcher();break
+            except (OSError,ValueError):continue
+        if data is None:raise BootstrapError("Ollama não iniciou em localhost:11434")
+    names=[str(m.get("name") or m.get("model") or "") for m in data.get("models",[])]
+    if model not in names:
+        executable=shutil.which("ollama")
+        if not executable and os.name=="nt":
+            candidate=Path(os.environ.get("LOCALAPPDATA",""))/"Programs"/"Ollama"/"ollama.exe"
+            if candidate.is_file():executable=str(candidate)
+        if not executable:raise BootstrapError("Ollama está ativo, mas seu comando não está disponível")
+        print("Baixando modelo gratuito Ollama ausente:",model,flush=True)
+        result=subprocess.run([executable,"pull",model],check=False,timeout=7200)
+        if result.returncode:
+            raise BootstrapError("Não foi possível baixar o modelo Ollama "+model)
+    return {"model":model,"endpoint":"http://127.0.0.1:11434","ready":True}
+
+def setup(workspace,voice_model=None,ollama_model='qwen2.5:7b'):
     root=Path(workspace);root.mkdir(parents=True,exist_ok=True)
     model=Path(voice_model) if voice_model else root/"models"/VOICE_NAME
     result=check_runtime(voice_path=model)
+    result['ollama']=ensure_ollama(root,model=ollama_model)
     state=root/"runtime_configuration.json"
     tmp=state.with_suffix(".json.partial")
     tmp.write_text(json.dumps(result,indent=2,ensure_ascii=False),encoding="utf8")
@@ -125,8 +171,9 @@ if __name__=="__main__":
     ap=argparse.ArgumentParser()
     ap.add_argument("--workspace",required=True)
     ap.add_argument("--voice-model")
+    ap.add_argument("--ollama-model",default="qwen2.5:7b")
     args=ap.parse_args()
-    try: print(setup(args.workspace,args.voice_model))
+    try: print(setup(args.workspace,args.voice_model,args.ollama_model))
     except Exception as exc:
         print(f"Falha de preparação: {exc}",file=sys.stderr)
         raise SystemExit(2)
