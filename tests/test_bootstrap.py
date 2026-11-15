@@ -5,10 +5,16 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from universal_engine.bootstrap import (
-    BootstrapError, check_runtime, download_model, setup, missing_packages, find_ffmpeg_bin,
+    BootstrapError, check_runtime, download_model, setup, missing_packages, find_ffmpeg_bin, ensure_ollama,
 )
 
 class BootstrapTests(unittest.TestCase):
+    def test_existing_ollama_model_never_downloaded_again(self):
+        with tempfile.TemporaryDirectory() as d:
+            status=ensure_ollama(d,model="qwen2.5:7b",
+                fetcher=lambda:{"models":[{"name":"qwen2.5:7b"}]})
+            self.assertTrue(status["ready"])
+            self.assertEqual(status["model"],"qwen2.5:7b")
     def test_bootstrap_does_not_download_voice_twice(self):
         with tempfile.TemporaryDirectory() as temp:
             model=Path(temp)/"pt_BR-faber-medium.onnx"
