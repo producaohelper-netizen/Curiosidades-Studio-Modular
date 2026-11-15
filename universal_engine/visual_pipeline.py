@@ -16,6 +16,7 @@ from functools import lru_cache
 from .media_sources import search_commons, MediaCandidate
 from .visual_matcher import OpenCLIPMatcher, match_scene
 from .local_generator import generate, GenerationError
+from .style_matcher import cartoon_indices
 
 class AssetPipelineError(RuntimeError):
     pass
@@ -104,8 +105,14 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
     if candidates:
         try:
             ranker=matcher or _shared_matcher()
-            decision=match_scene(scene,candidates,images,ranker)
-            if decision.status=="selected":
+            indices=list(range(len(candidates)))
+            if scene.get("visual_style")=="cartoon":
+                indices=cartoon_indices(ranker,images)
+                if not indices:
+                    errors.append("Fotos realistas não atendem ao estilo de animação 2D")
+            decision=match_scene(scene,[candidates[i] for i in indices],
+                                 [images[i] for i in indices],ranker) if indices else None
+            if decision is not None and decision.status=="selected":
                 index=next(i for i,c in enumerate(candidates) if c.image_url==decision.image_url)
                 c=candidates[index]
                 final=work/"final.png"
@@ -114,7 +121,8 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
                                   True,"Revisão factual e atribuição ainda obrigatórias",prompt,
                                   c.license_name,c.license_url,c.page_url)
                 return _save(result,work)
-            errors.append(f'{decision.reason}; similaridade={decision.similarity}; margem={decision.margin}')
+            if decision is not None:
+                errors.append(f'{decision.reason}; similaridade={decision.similarity}; margem={decision.margin}')
         except Exception as exc:
             errors.append(f"OpenCLIP: {type(exc).__name__}")
     if comfy_workflow:
