@@ -200,6 +200,12 @@ def prepare_scene_assets(scene, work: Path, settings: Settings, *,
     sprites = {}
     # In CPU-only mode, remove the photographed subject from EVERY backdrop,
     # even when the reusable sprite was cached by an earlier scene.
+    if (scene.get("visual_style")=="cartoon" and result.source=="Wikimedia Commons"
+        and not settings.sprite_workflow and not has_alpha(result.file)):
+        raise ProductionError(
+            f"{scene_id}: a ilustração escolhida não tem fundo transparente; "
+            "bloqueada para evitar personagem fotográfico com bordas artificiais. "
+            "Exige desenho vetorial ou ComfyUI.")
     if result.source=="Wikimedia Commons" and len(scene["actors"])==1 and not settings.sprite_workflow:
         actor=scene["actors"][0]
         dst=asset_path(work/"characters",actor["asset_id"])
