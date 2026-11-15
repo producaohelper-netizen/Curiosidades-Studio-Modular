@@ -42,6 +42,23 @@ class LayerRendererTests(unittest.TestCase):
     self.assertIsNotNone(ImageChops.difference(no_caption,captioned).getbbox())
    finally:
     for layer in layers.values():layer.close()
+ def test_ink_cloud_does_not_hide_entire_frame(self):
+  import copy
+  scene=copy.deepcopy(SCENES[0])
+  scene["visual_style"]="cartoon"
+  scene["timeline"]=[{"at":0,"action":"emit_particles","target":"polvo",
+                      "effect":"ink_cloud"}]
+  with Image.open(self.background) as background:
+   sprites={key:Image.open(path) for key,path in self.assets.items()}
+   try:
+    frame=render_frame(scene,1.5,background,sprites,size=(640,360))
+    rgb=frame.convert("RGB")
+    purple=sum(1 for r,g,b in rgb.getdata()
+               if 25<=r<=85 and g<70 and 40<=b<=145)
+    self.assertLess(purple/(640*360),.28,
+                    "Nuvem cobriu quase todo o desenho, como na versão reprovada")
+   finally:
+    for image in sprites.values():image.close()
  def test_no_fake_asset_on_missing_image(self):
   with Image.open(self.background) as bg:
    with self.assertRaises(RenderError):
