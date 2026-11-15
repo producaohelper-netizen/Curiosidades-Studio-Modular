@@ -81,13 +81,13 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
         py=max(1,int(px*source.height/source.width))
         angle=round(float(transform["angle"]),1)
         key=(actor["asset_id"],id(img),px,py,angle)
-        if layer_cache is not None and key in layer_cache:
+        if mouth is None and layer_cache is not None and key in layer_cache:
             layer=layer_cache[key].copy()
         else:
             layer=source.resize((px,py),Image.Resampling.LANCZOS)
             if abs(angle)>0.1:
                 layer=layer.rotate(-angle,resample=Image.Resampling.BICUBIC,expand=True)
-            if layer_cache is not None and len(layer_cache)<120:
+            if mouth is None and layer_cache is not None and len(layer_cache)<120:
                 layer_cache[key]=layer.copy()
         if (actor.get("kind")=="animal" and sheet is None and
             scene.get("visual_style")=="cartoon" and actor.get("organic_sway",True)):
