@@ -97,6 +97,8 @@ class PipelineTests(unittest.TestCase):
    def score(self,query,files):
     if "flat two dimensional cartoon" in query:return [.49]
     if "documentary photograph" in query:return [.16]
+    if "scientific anatomy diagram" in query:return [.11]
+    if "single complete recognizable cute cartoon" in query:return [.51]
     return [.48]
   scene={**SCENE,"scene_id":"shark_cartoon","asset_purpose":"actor",
          "visual_style":"cartoon"}
