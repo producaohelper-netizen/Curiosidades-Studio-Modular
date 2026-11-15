@@ -110,6 +110,31 @@ class PipelineIntegrationTests(unittest.TestCase):
         self.assertEqual(len(list(Path(result["workspace"]).joinpath("clips").glob("*.mp4"))),50)
         self.assertEqual(result["duration"],300.0)
 
+    def test_voice_calibrated_before_visual_render(self):
+        asset,unused_tts,clip=self.fixtures()
+        calls=[]
+        def variable_tts(text,model,wav,**kwargs):
+            scale=float(kwargs.get("length_scale",1))
+            calls.append(scale)
+            return {"path":str(wav),"duration":5.0*scale}
+        def fake_mux(clips,output):
+            output.write_bytes(b"assembled mock")
+            return output
+        with patch("universal_engine.production.assert_preflight"):
+            result=run(self.settings,
+                topic_selector=lambda s:{"title":"Defesas dos animais","trending":False},
+                story_writer=lambda t,l:{"title":t,"sections":[],
+                    "narration":"Uma fala de teste","words":680},
+                planner=lambda text,max_words:{"scenes":[self.scene(i) for i in range(50)]},
+                asset_provider=asset,tts=variable_tts,clip_renderer=clip,
+                mux=fake_mux,probe=lambda video:300.0)
+        self.assertEqual(result["status"],"rendered_pending_editorial_review")
+        self.assertEqual(len(calls),100)
+        self.assertAlmostEqual(calls[0],1.0)
+        self.assertAlmostEqual(calls[50],1.2)
+        stages=[r["stage"] for r in result["stages"]]
+        self.assertLess(stages.index("voice_duration_checked"),
+                        stages.index("scene_render"))
     def test_rejects_missing_asset_and_does_not_claim_success(self):
         self.settings.vector_fallback=False
         asset,tts,clip=self.fixtures()
