@@ -189,6 +189,7 @@ def prepare_scene_assets(scene, work: Path, settings: Settings, *,
             temporary=dst if not dst.is_file() else work/"scene_backgrounds"/(scene_id+"_discard.png")
             if scene.get('visual_style')=='cartoon' and has_alpha(result.file):
                 if not dst.is_file():alpha_sprite(result.file,dst)
+                temporary=dst
                 create_background(scene.get('setting',{}).get('kind','nature'),background,identity=scene_id)
             else:
                 extract_for_scene(scene,result.file,temporary,background)
@@ -203,7 +204,7 @@ def prepare_scene_assets(scene, work: Path, settings: Settings, *,
                 raise
             if temporary!=dst:temporary.unlink(missing_ok=True)
         result.file=str(background)
-        result.reason += "; fundo extraído da fotografia; revisar contornos"
+        result.reason += "; composição de camadas: revisão visual necessária"
         result.review_required=True
     for actor in scene["actors"]:
         dst=asset_path(work/"characters",actor["asset_id"])
