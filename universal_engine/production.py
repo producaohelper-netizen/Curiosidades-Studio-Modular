@@ -29,6 +29,7 @@ from .scenespec import validate
 from .sprite_factory import produce_sprite
 from .photo_layers import extract_for_scene
 from .illustrated_layers import has_alpha, alpha_sprite, create_background
+from .multiactor import illustrated_actors, MultiActorError
 from .foreground_match import verify_foreground
 from .comfy_auto import auto_workflow, ComfySetupError
 
@@ -174,6 +175,16 @@ def prepare_scene_assets(scene, work: Path, settings: Settings, *,
     photograph is a transparent character sprite.
     """
     scene_id = scene["scene_id"]
+    if len(scene["actors"]) >= 2:
+        try:
+            return illustrated_actors(
+                scene, work, provider=get_asset,
+                sprite_generator=produce_sprite if settings.sprite_workflow else None,
+                sprite_workflow=settings.sprite_workflow)
+        except MultiActorError as exc:
+            raise ProductionError(
+                f"{scene_id}: composição multiator não pôde ser concluída: {exc}"
+            ) from exc
     result = get_asset(scene, work / "image_search",
                        comfy_workflow=settings.comfy_workflow)
     if not result.file:
@@ -331,7 +342,7 @@ def run(settings: Settings, *, story_writer=write_story,
                       fallback="licensed-photos + rembg for one-actor scenes")
         if planner is plan_script:
             storyboard = planner(story["narration"], max_words=15,
-                                 max_actors=4 if settings.sprite_workflow else 1)
+                                 max_actors=4 if settings.sprite_workflow else 2)
         else:
             storyboard = planner(story["narration"], max_words=15)
         scenes = storyboard["scenes"]
