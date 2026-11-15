@@ -1,6 +1,6 @@
 import unittest
 from PIL import Image, ImageChops
-from universal_engine.effects import paint_effect
+from universal_engine.effects import paint_effect,paint_reaction
 
 class AnimatedEffectsTests(unittest.TestCase):
     def _frame(self,name,t):
@@ -12,6 +12,19 @@ class AnimatedEffectsTests(unittest.TestCase):
         late=self._frame("ink_cloud",1.5)
         self.assertIsNotNone(ImageChops.difference(early.convert('RGB'),late.convert('RGB')).getbbox())
         self.assertEqual(late.tobytes(),self._frame("ink_cloud",1.5).tobytes())
+    def test_reaction_is_brief_visible_and_repeatable(self):
+        def sample(age):
+            image=Image.new("RGBA",(320,180),(25,52,76,255))
+            paint_reaction(image,150,90,32,age,"surprised")
+            return image
+        early=sample(.15)
+        late=sample(.85)
+        done=sample(1.4)
+        self.assertIsNotNone(ImageChops.difference(early.convert("RGB"),
+                             late.convert("RGB")).getbbox())
+        self.assertEqual(done.tobytes(),
+                         Image.new("RGBA",(320,180),(25,52,76,255)).tobytes())
+        self.assertEqual(early.tobytes(),sample(.15).tobytes())
     def test_volcano_eruption_has_upward_movement(self):
         start=self._frame("smoke",.1)
         later=self._frame("smoke",1.4)
