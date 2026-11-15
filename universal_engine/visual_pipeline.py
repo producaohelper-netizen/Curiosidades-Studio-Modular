@@ -38,6 +38,7 @@ class SceneAsset:
     license_name: str
     license_url: str
     original_url: str
+    visual_style: str = ""
 
 def download_commons(item: MediaCandidate, destination: str|Path):
     """Download only Wikimedia-hosted images; decode and re-encode safely."""
@@ -84,7 +85,8 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
             file=Path(cached.file).resolve() if cached.file else None
             if (cached.scene_id==scene_id and cached.prompt==prompt and
                 file is not None and file.is_file() and
-                file.is_relative_to(work.resolve()) and file.stat().st_size>1024):
+                file.is_relative_to(work.resolve()) and file.stat().st_size>1024 and
+                cached.visual_style==scene.get('visual_style','')):
                 return cached
         except (ValueError,TypeError,OSError,KeyError):
             pass
@@ -121,7 +123,8 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
                 with Image.open(images[index]) as img:img.save(final)
                 result=SceneAsset(scene_id,str(final),"Wikimedia Commons",c.attribution,
                                   True,"Revisão factual e atribuição ainda obrigatórias",prompt,
-                                  c.license_name,c.license_url,c.page_url)
+                                  c.license_name,c.license_url,c.page_url,
+                                  scene.get('visual_style',''))
                 return _save(result,work)
             if decision is not None:
                 errors.append(f'{decision.reason}; similaridade={decision.similarity}; margem={decision.margin}')
@@ -130,10 +133,16 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
     if comfy_workflow:
         try:
             generate_image=generator or generate
-            g=generate_image(prompt,comfy_workflow,work/"final.png")
+            image_prompt=(
+                'Original 2D cartoon illustration, clean bold ink outlines, flat bright colors, '
+                'readable composition, unified art direction, NOT a photograph. '+prompt
+                if scene.get('visual_style')=='cartoon' else prompt
+            )
+            g=generate_image(image_prompt,comfy_workflow,work/"final.png")
             result=SceneAsset(scene_id,g.file,"local-comfyui","",True,
                               "Ilustração de IA exige revisão científica e de consistência",prompt,
-                              "CHECK_MODEL_LICENSE","", "")
+                              "CHECK_MODEL_LICENSE","", "",
+                              scene.get("visual_style",""))
             return _save(result,work)
         except Exception as exc:
             errors.append(f"ComfyUI: {type(exc).__name__}")
