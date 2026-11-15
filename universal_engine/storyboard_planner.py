@@ -45,8 +45,9 @@ def _read_ollama(prompt:str, url="http://127.0.0.1:11434/api/generate",
         raise PlanningError("Ollama retornou JSON inválido") from err
 
 def plan_batch(narrations:list[str], start_index:int=0, generator=None,
-               known_actors:dict|None=None)->list[dict]:
+               known_actors:dict|None=None,max_actors:int=4)->list[dict]:
     if not narrations or len(narrations)>5:raise PlanningError("Lote deve ter 1 a 5 falas")
+    if not 1<=max_actors<=4:raise PlanningError("max_actors inválido")
     context=json.dumps([{"index":start_index+i,"narration":line}
                         for i,line in enumerate(narrations)],ensure_ascii=False)
     known_actors=known_actors if known_actors is not None else {}
@@ -61,7 +62,7 @@ Cada cena precisa de:
 - "visual_fact": afirmação factual que a ilustração representa;
 - "callout": 1 a 4 palavras presentes na fala, para rótulo discreto na tela;
 - "actors": array de 1-4 objetos {{id,kind,asset_id,x,y}},
-  kind em {sorted(KINDS)}. Mesmo elemento recorrente conserva asset_id entre cenas.
+  kind em {sorted(KINDS)}. No máximo {max_actors} ator(es) por cena. Mesmo elemento recorrente conserva asset_id entre cenas.
   IDENTIDADES DE LOTES ANTERIORES: {registry}
   Reutilize o mesmo asset_id para atores com o mesmo id.
 - "timeline": array ordenado cronologicamente de 2-5 ações.
@@ -79,6 +80,8 @@ Falas (não altere nem reescreva; serão inseridas pelo programa):
     done=[]
     for offset,(line,raw) in enumerate(zip(narrations,scenes)):
         if not isinstance(raw,dict):raise PlanningError("Cena não é objeto JSON")
+        if len(raw.get("actors",[]))>max_actors:
+            raise PlanningError("IA excedeu quantidade de atores disponível no motor visual")
         expected_seconds=max(2.0,min(55.0,round(len(line.split())/2.5,2)))
         scene={"version":1,
                "scene_id":f"scene_{start_index+offset:03}",
@@ -118,12 +121,12 @@ Falas (não altere nem reescreva; serão inseridas pelo programa):
         done.append(scene)
     return done
 
-def plan_script(script:str, generator=None, max_words=23):
+def plan_script(script:str, generator=None, max_words=23,max_actors=4):
     lines=split_narration(script,max_words)
     scenes=[]
     registry={}
     for i in range(0,len(lines),5):
-        scenes.extend(plan_batch(lines[i:i+5],i,generator,registry))
+        scenes.extend(plan_batch(lines[i:i+5],i,generator,registry,max_actors=max_actors))
     return {"schema_version":1,"scenes":scenes,
             "estimated_duration":round(sum(x["duration_target_seconds"] for x in scenes),1),
             "requires_real_audio_timing":True}
