@@ -1,0 +1,40 @@
+name: Verificação real de 3 assuntos, imagem e voz
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ci/live_three_topics.py'
+      - '.github/workflows/live-three-topics.yml'
+jobs:
+  real_pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar dependências de mídia gratuita
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'Pillow>=11,<13' open_clip_torch 'rembg[cpu]' opencv-python-headless piper-tts
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - name: Modelo brasileiro Piper versão conhecida
+        run: |
+          mkdir -p voice
+          BASE='https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/pt/pt_BR/faber/medium'
+          curl --fail --location --retry 3 "$BASE/pt_BR-faber-medium.onnx" -o voice/pt_BR-faber-medium.onnx
+          curl --fail --location --retry 3 "$BASE/pt_BR-faber-medium.onnx.json" -o voice/pt_BR-faber-medium.onnx.json
+          test "$(stat -c%s voice/pt_BR-faber-medium.onnx)" -gt 30000000
+      - name: Executar pipelines reais em três assuntos
+        run: python -u ci/live_three_topics.py | tee live-test.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cenas-reais-curtas-para-revisao-tecnica
+          path: |
+            live-demo/*/clip.mp4
+            live-demo/report.json
+            live-test.log
+          retention-days: 5
