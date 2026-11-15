@@ -36,6 +36,18 @@ class MediaSourcesTests(unittest.TestCase):
         entry["imageinfo"][0]["url"]="file:///home/test.png"
         entry["imageinfo"][0].pop("thumburl")
         self.assertIsNone(parse_image(entry))
+    def test_search_vector_drawings_first(self):
+        seen=[]
+        def fake(url):
+            seen.append(url)
+            return {"query":{"pages":[record(title="File:Octopus.svg")]}}
+        found=search_commons("octopus",fetch_json=fake,filetype="drawing")
+        self.assertEqual(len(found),1)
+        self.assertIn("filetype%3Adrawing",seen[0])
+    def test_reject_unsupported_filetype(self):
+        with self.assertRaises(ValueError):
+            search_commons("octopus",fetch_json=lambda _: {},
+                           filetype="executable")
     def test_search_api_mock_and_save(self):
         data={"query":{"pages":[record(),record("All Rights Reserved","File:Wrong.jpg")]}}
         result=search_commons("octopus",fetch_json=lambda _:data)
