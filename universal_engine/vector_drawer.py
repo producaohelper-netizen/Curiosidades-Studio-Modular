@@ -172,20 +172,30 @@ def local_instructions(actor,model="qwen2.5:7b",requester=None):
         "required":["e"],"additionalProperties":False}
     payload={"model":model,"prompt":prompt,"format":schema,"stream":False,
              "options":{"temperature":.1,"num_predict":2200}}
-    try:
-        raw=requester(payload)
-    except (OSError,KeyError,TypeError,ValueError) as exc:
-        raise VectorArtError('Falha comunicando com Ollama: '+str(exc)) from exc
-    try:
-        data=json.loads(raw['response'])
-    except (KeyError,TypeError,ValueError) as exc:
-        preview=str(raw.get('response',''))[:160] if isinstance(raw,dict) else ''
-        reason=str(raw.get('done_reason','?')) if isinstance(raw,dict) else '?'
-        raise VectorArtError('JSON inválido; done_reason='+reason+'; início='+repr(preview)+'; erro='+str(exc)) from exc
-    if isinstance(data,dict) and "e" in data:
-        data=normalize_simple_shapes(data)
-    validate_art(data)
-    return data,prompt
+    last_error=None
+    for attempt in range(3):
+        if attempt:
+            # A malformed rectangle must be corrected, not silently accepted.
+            payload["prompt"]=(prompt+
+                "\\nCORRIJA O DESENHO: a tentativa anterior falhou com: "+
+                str(last_error)[:180]+
+                ". Cada forma deve conter b=[esquerda,topo,direita,baixo], "+
+                "com direita maior que esquerda por pelo menos 8 pixels e "+
+                "baixo maior que topo por pelo menos 8 pixels. "+
+                "Faça um corpo central grande com olhos e detalhes visíveis. "+
+                "Não produza caixas de largura zero nem formas fora do quadro.")
+            payload["options"]["temperature"]=0.22
+        try:
+            raw=requester(payload)
+            data=json.loads(raw["response"])
+            if isinstance(data,dict) and "e" in data:
+                data=normalize_simple_shapes(data)
+            validate_art(data)
+            return data,prompt
+        except (OSError,KeyError,TypeError,ValueError,VectorArtError) as exc:
+            last_error=exc
+    raise VectorArtError("Ollama não produziu desenho válido em 3 tentativas: "+
+                         str(last_error)[:220])
 
 def generate_actor(actor,output,model="qwen2.5:7b",requester=None):
     target=Path(output)
