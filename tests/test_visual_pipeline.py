@@ -80,6 +80,30 @@ class PipelineTests(unittest.TestCase):
   second=build_scene_asset(cartoon_scene,self.temp.name,matcher=Match(),
                            commons_search=only_first,downloader=self.fake_download)
   self.assertIsNone(second.file,"Foto antiga não pode passar por cartoon")
+ def test_character_search_excludes_anatomy_diagrams(self):
+  anatomical=MediaCandidate("File:Shark Anatomy.svg",
+      "https://upload.wikimedia.org/shark-anatomy.png",
+      "https://commons.wikimedia.org/wiki/File:Shark_Anatomy.svg",
+      "CC BY 4.0","https://creativecommons.org/licenses/by/4.0",
+      "Author","Labeled anatomical diagram of shark fins",
+      "Author CC BY 4.0")
+  illustration=MediaCandidate("File:Blue_shark_cartoon.svg",
+      "https://upload.wikimedia.org/shark-cartoon.png",
+      "https://commons.wikimedia.org/wiki/File:Blue_shark_cartoon.svg",
+      "CC BY 4.0","https://creativecommons.org/licenses/by/4.0",
+      "Artist","Cute illustrated shark with no labels",
+      "Artist CC BY 4.0")
+  class Ranker:
+   def score(self,query,files):
+    if "flat two dimensional cartoon" in query:return [.49]
+    if "documentary photograph" in query:return [.16]
+    return [.48]
+  scene={**SCENE,"scene_id":"shark_cartoon","asset_purpose":"actor",
+         "visual_style":"cartoon"}
+  chosen=build_scene_asset(scene,self.temp.name,matcher=Ranker(),
+      commons_search=lambda query,limit:[anatomical,illustration],
+      downloader=self.fake_download)
+  self.assertEqual(chosen.original_url,illustration.page_url)
  def test_comfy_prompt_requires_cartoon_style(self):
   class FalseMatcher:
    def score(self,query,files):return [.01]
