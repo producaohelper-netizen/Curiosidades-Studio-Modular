@@ -4,7 +4,9 @@ on:
     paths:
       - 'qa/**'
       - 'universal_engine/scenespec.py'
+      - 'universal_engine/expressive_poses.py'
       - 'tests/test_editorial_integrity.py'
+      - 'tests/test_expressive_poses.py'
       - 'tests/test_video_integrity_audit.py'
       - 'tests/test_camera_timing_regressions.py'
       - 'tests/test_camera_parameter_validation.py'
@@ -24,6 +26,7 @@ jobs:
         run: |
           python -m unittest -v \
             tests/test_editorial_integrity.py \
+            tests/test_expressive_poses.py \
             tests/test_video_integrity_audit.py \
             tests/test_camera_timing_regressions.py \
             tests/test_camera_parameter_validation.py
