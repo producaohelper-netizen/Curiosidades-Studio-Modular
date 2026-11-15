@@ -115,9 +115,9 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
             # A labelled anatomy diagram can score highly for "shark"
             # while looking absurd as an animated character.
             diagram_terms=re.compile(
-                r"\\b(anatomy|anatomical|diagram|labelled|labeled|"
+                r"\b(anatomy|anatomical|diagram|labelled|labeled|"
                 r"dissection|skeleton|cross[- ]section|schematic|"
-                r"bones|organ systems)\\b",re.IGNORECASE)
+                r"bones|organ systems)\b",re.IGNORECASE)
             found=[item for item in found
                    if not diagram_terms.search(item.title+" "+item.description)]
         seen=set()
