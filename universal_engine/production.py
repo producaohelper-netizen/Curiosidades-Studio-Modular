@@ -21,6 +21,7 @@ import unicodedata
 
 from .trends import fetch_trends, top_five
 from qa.editorial_integrity import check_storyboard
+from qa.visual_repetition_audit import audit_scene_backgrounds
 from .storyboard_planner import plan_script
 from .visual_pipeline import build_scene_asset, SceneAsset
 from .vector_drawer import generate_actor
@@ -420,10 +421,12 @@ def run(settings: Settings, *, story_writer=write_story,
               clips=len(voices),voice_length_scale=round(speed_scale,3))
         clips=[]
         asset_log=[]
+        background_log=[]
         for index,scene in enumerate(scenes):
             bg,sprites,asset=prepare_scene_assets(
                 scene,root/"assets",settings,get_asset=asset_provider)
             asset_log.append(asdict(asset))
+            background_log.append((scene["scene_id"], str(bg)))
             voice=voices[index]
             aligned=retime_to_audio(scene,voice["duration"])
             clip=root/"clips"/f"clip_{index:03}.mp4"
@@ -437,6 +440,11 @@ def run(settings: Settings, *, story_writer=write_story,
         if len(clips) != len(scenes) or any(not Path(clip).is_file() or Path(clip).stat().st_size == 0 for clip in clips):
             raise ProductionError("Cenas incompletas: todos os clipes precisam existir antes da montagem")
         stage("all_scene_clips_verified",expected=len(scenes),found=len(clips))
+        visual_audit = audit_scene_backgrounds(background_log)
+        atomic_json(root/"auditoria_repeticao_visual.json", visual_audit)
+        stage("visual_repetition_checked",
+              unique_backgrounds=visual_audit["unique_backgrounds"],
+              repeated_scene_count=visual_audit["repeated_scene_count"])
         atomic_json(root/"licencas_e_assets.json", asset_log)
         # Créditos rastreáveis; não substitui a revisão das condições CC BY-SA.
         credits=[]
