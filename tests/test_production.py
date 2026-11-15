@@ -65,6 +65,9 @@ class PipelineIntegrationTests(unittest.TestCase):
 
     def test_fifty_scenes_nearly_five_minutes(self):
         asset,tts,clip=self.fixtures()
+        def fake_mux(clips, output):
+            output.write_bytes(b"assembled video fixture")
+            return output
         with patch("universal_engine.production.assert_preflight"):
             result=run(self.settings,
                 topic_selector=lambda s:{"title":"Defesas dos animais","trending":False},
@@ -72,7 +75,7 @@ class PipelineIntegrationTests(unittest.TestCase):
                     "narration":"Uma fala de teste","words":680},
                 planner=lambda text,max_words:{"scenes":[self.scene(i) for i in range(50)]},
                 asset_provider=asset,tts=tts,clip_renderer=clip,
-                mux=lambda clips,out: (out.write_bytes(b"test final") or out),
+                mux=fake_mux,
                 probe=lambda video:300.0)
         self.assertEqual(result["status"],"rendered_pending_editorial_review")
         self.assertEqual(result["artistic_approval"],"NOT_PERFORMED")
