@@ -12,12 +12,18 @@ from urllib.request import Request, urlopen
 from PIL import Image
 from io import BytesIO
 import json, hashlib, time
+from functools import lru_cache
 from .media_sources import search_commons, MediaCandidate
 from .visual_matcher import OpenCLIPMatcher, match_scene
 from .local_generator import generate, GenerationError
 
 class AssetPipelineError(RuntimeError):
     pass
+
+@lru_cache(maxsize=1)
+def _shared_matcher():
+    # Reuse expensive CPU OpenCLIP weights across all 40-100 scenes.
+    return OpenCLIPMatcher()
 
 @dataclass
 class SceneAsset:
@@ -97,7 +103,7 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
         errors.append(f"Commons: {type(exc).__name__}")
     if candidates:
         try:
-            ranker=matcher or OpenCLIPMatcher()
+            ranker=matcher or _shared_matcher()
             decision=match_scene(scene,candidates,images,ranker)
             if decision.status=="selected":
                 index=next(i for i,c in enumerate(candidates) if c.image_url==decision.image_url)
