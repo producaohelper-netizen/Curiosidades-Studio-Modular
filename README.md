@@ -36,3 +36,16 @@ Os módulos em `universal_engine/` agora incluem:
 **Não há aprovação de produto final:** não foram comprovados a geração de imagens local com modelo real, a extração automática de personagens consistentes em camadas, a produção de cinco minutos sobre vários assuntos com todas as dependências reais, a qualidade de narração, nem a semelhança artística com a amostra de animação do usuário. Não publicar/entregar um executável como final baseado apenas nos testes unitários.
 
 A amostra do usuário e o episódio anterior foram amostrados a cada 4 segundos; o vídeo antigo teve mais mudanças de pixels, mas **menos coerência narrativa**. Portanto, qualidade não é só número de cortes; a prioridade é ação visual correspondente à fala.
+
+## Integração híbrida atual (desenvolvimento, não liberar como produto final)
+
+Novo fluxo `python -m universal_engine.production` com `oneclick/main.go`:
+- Google Trends Brasil + Ollama (roteiro e direção de 40–100 cenas);
+- Wikimedia Commons/atribuição + OpenCLIP para associação semântica;
+- geração local opcional pelo ComfyUI, seleção de checkpoint já instalado;
+- sprites consistentes por asset_id + recorte local rembg; modo CPU opcional com foto isolada;
+- verificação semântica dos sujeitos e distinção de fotografias vs cartoons;
+- Piper pt-BR real com WAV por cena, sincronização temporal, FFmpeg 24 FPS, créditos de licença;
+- falha explícita quando cenas, direitos, áudio ou duração não atendem aos critérios.
+
+**Evidência:** [GitHub Actions Piper real](https://github.com/producaohelper-netizen/Curiosidades-Studio-Modular/actions/runs/43658995573) passou. [Compilação e integração simulada](https://github.com/producaohelper-netizen/Curiosidades-Studio-Modular/actions/runs/43659910434) não provam produção real. A tentativa de três assuntos reais encontrou falhas de correspondência/qualidade; os curtos vídeos inspecionados tinham borrões de recorte e não eram semelhantes à amostra. Por isso foi adicionado controle de estilo 2D. **Nenhum .exe foi homologado como produto final**, a instalação local de ComfyUI/checkpoints depende do computador, e nenhum vídeo de 5 minutos com esse novo fluxo passou revisão artística ou testes sobre três temas reais.
