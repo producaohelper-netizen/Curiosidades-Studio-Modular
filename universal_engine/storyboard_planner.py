@@ -61,7 +61,8 @@ Cada cena precisa de:
 - "setting": objeto com campo "kind" ("space","underwater","workshop","forest", etc.);
 - "visual_fact": afirmação factual que a ilustração representa;
 - "callout": 1 a 4 palavras presentes na fala, para rótulo discreto na tela;
-- "actors": array de 1-4 objetos {{id,kind,asset_id,x,y}},
+- "actors": array de 1-4 objetos {{id,kind,asset_id,x,y,visual_query_en}},
+  visual_query_en descreve em inglês a aparência do ator em 5–12 palavras.
   kind em {sorted(KINDS)}. No máximo {max_actors} ator(es) por cena. Mesmo elemento recorrente conserva asset_id entre cenas.
   IDENTIDADES DE LOTES ANTERIORES: {registry}
   Reutilize o mesmo asset_id para atores com o mesmo id.
