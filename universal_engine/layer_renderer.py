@@ -12,6 +12,7 @@ import math, subprocess, wave, json
 from .scenespec import validate, motion
 from .camera import apply_camera
 from .sprites import select_frame
+from .effects import paint_effect
 
 class RenderError(RuntimeError):
     pass
@@ -73,16 +74,9 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
             d.ellipse((x-px*.6,y-py*.6,x+px*.6,y+py*.6),
                       outline="#fbe671",width=max(2,w//300))
         if transform.get("effect"):
-            d=ImageDraw.Draw(canvas)
-            x=int(transform["x"]*w);y=int(transform["y"]*h)
-            for n in range(14):
-                theta=n*math.pi*2/14
-                distance=px*.54+(time_sec%1)*px*.20
-                ex=int(x+distance*math.cos(theta))
-                ey=int(y+distance*math.sin(theta))
-                radius=max(2,w//150)
-                d.ellipse((ex-radius,ey-radius,ex+radius,ey+radius),
-                          fill="#4d3b78" if "ink" in str(transform["effect"]) else "#eac959")
+            paint_effect(canvas,transform["effect"],int(transform["x"]*w),
+                         int(transform["y"]*h),px,
+                         transform.get("effect_elapsed",0),name)
     # Uma palavra-chave discreta reforça a explicação sem virar slide estático.
     callout=scene.get("callout","")
     if isinstance(callout,str) and 1<=len(callout)<=45 and time_sec>=.45:
