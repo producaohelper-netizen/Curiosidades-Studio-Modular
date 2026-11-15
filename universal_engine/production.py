@@ -23,6 +23,7 @@ from .narration import generate_piper, retime_to_audio
 from .layer_renderer import render_clip
 from .scenespec import validate
 from .sprite_factory import produce_sprite
+from .photo_layers import extract_for_scene
 
 
 class ProductionError(RuntimeError):
@@ -174,12 +175,21 @@ def prepare_scene_assets(scene, work: Path, settings: Settings, *,
     for actor in scene["actors"]:
         dst = asset_path(work / "characters", actor["asset_id"])
         if not dst.is_file():
-            if not settings.sprite_workflow:
+            if settings.sprite_workflow:
+                produce_sprite(actor, work / "characters", settings.sprite_workflow)
+            elif result.source=="Wikimedia Commons" and len(scene["actors"])==1:
+                background=work/"scene_backgrounds"/(scene_id+".png")
+                extracted=extract_for_scene(scene, result.file, dst, background)
+                result.review_required=True
+                result.reason += "; foreground extraído por IA; " + extracted["warning"]
+                # Use the inpainted backdrop, not the original with a ghost subject.
+                original_background=Path(result.file)
+                result.file=str(background)
+            else:
                 raise ProductionError(
-                    f"{scene_id}: ator '{actor['asset_id']}' sem PNG RGBA; "
-                    "configure o workflow local de sprites em ComfyUI"
+                    f"{scene_id}: sem sprite RGBA adequado para '{actor['asset_id']}'; "
+                    "ative ComfyUI ou use uma cena de sujeito único licenciada"
                 )
-            produce_sprite(actor, work / "characters", settings.sprite_workflow)
         from PIL import Image
         with Image.open(dst) as image:
             if image.mode != "RGBA" or not image.getchannel("A").getextrema()[0] < 255:
