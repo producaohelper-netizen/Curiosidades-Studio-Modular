@@ -1,6 +1,6 @@
 """Real illustrated two-topic sample, no mocked audio or render path.
 
-Wikimedia transparent drawings + OpenCLIP + original illustrated background +
+Wikimedia transparent drawings + OpenCLIP + moving illustrated background +
 Piper pt-BR + generic animation SceneSpec + FFmpeg. Short *diagnostic*
 clips, never mark artistic review as passed without human inspection.
 """
