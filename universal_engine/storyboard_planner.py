@@ -44,20 +44,25 @@ def _read_ollama(prompt:str, url="http://127.0.0.1:11434/api/generate",
     except (KeyError,ValueError,TypeError) as err:
         raise PlanningError("Ollama retornou JSON inválido") from err
 
-def plan_batch(narrations:list[str], start_index:int=0, generator=None)->list[dict]:
+def plan_batch(narrations:list[str], start_index:int=0, generator=None,
+               known_actors:dict|None=None)->list[dict]:
     if not narrations or len(narrations)>5:raise PlanningError("Lote deve ter 1 a 5 falas")
     context=json.dumps([{"index":start_index+i,"narration":line}
                         for i,line in enumerate(narrations)],ensure_ascii=False)
+    known_actors=known_actors if known_actors is not None else {}
+    registry=json.dumps(known_actors,ensure_ascii=False)
     prompt=f"""Você é diretor de animação infantil educativa em português.
 Transforme as falas abaixo em um JSON com campo "scenes" (array do mesmo comprimento,
 mesma ordem), sem inventar fatos científicos.
 Cada cena precisa de:
 - "visual_query_en": descrição visual EM INGLÊS (20-40 palavras) do que se vê;
-- "search_terms_en": 2-5 palavras-chave EM INGLÊS para Wikimedia Commons;
+- "search_terms_en": STRING contendo 2-5 palavras-chave EM INGLÊS para Wikimedia Commons;
 - "setting": objeto com campo "kind" ("space","underwater","workshop","forest", etc.);
 - "visual_fact": afirmação factual que a ilustração representa;
 - "actors": array de 1-4 objetos {{id,kind,asset_id,x,y}},
   kind em {sorted(KINDS)}. Mesmo elemento recorrente conserva asset_id entre cenas.
+  IDENTIDADES DE LOTES ANTERIORES: {registry}
+  Reutilize o mesmo asset_id para atores com o mesmo id.
 - "timeline": array ordenado cronologicamente de 2-5 ações.
 Cada ação tem at (segundos a partir de zero), action em {sorted(ACTIONS)},
 target = id de ator existente, e outros campos necessários (to_x, to_y,
@@ -88,6 +93,16 @@ Falas (não altere nem reescreva; serão inseridas pelo programa):
             raise PlanningError("Cena sem descrição visual suficiente")
         if not isinstance(scene["search_terms_en"],str) or not scene["search_terms_en"].strip():
             raise PlanningError("Cena sem palavras-chave para banco de imagens")
+        for actor in scene["actors"]:
+            ident=actor["id"].casefold().strip()
+            previous=known_actors.get(ident)
+            if previous:
+                if actor["kind"]!=previous["kind"]:
+                    raise PlanningError(f"Ator {ident} mudou de tipo entre cenas")
+                actor["asset_id"]=previous["asset_id"]
+            else:
+                known_actors[ident]={"kind":actor["kind"],
+                                     "asset_id":actor["asset_id"]}
         try:validate(scene)
         except SceneError as err:raise PlanningError(f"SceneSpec inválido: {err}") from err
         done.append(scene)
@@ -96,8 +111,9 @@ Falas (não altere nem reescreva; serão inseridas pelo programa):
 def plan_script(script:str, generator=None, max_words=23):
     lines=split_narration(script,max_words)
     scenes=[]
+    registry={}
     for i in range(0,len(lines),5):
-        scenes.extend(plan_batch(lines[i:i+5],i,generator))
+        scenes.extend(plan_batch(lines[i:i+5],i,generator,registry))
     return {"schema_version":1,"scenes":scenes,
             "estimated_duration":round(sum(x["duration_target_seconds"] for x in scenes),1),
             "requires_real_audio_timing":True}
