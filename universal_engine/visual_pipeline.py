@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 from PIL import Image
 from io import BytesIO
-import json, hashlib, time
+import json, hashlib, time, re
 from functools import lru_cache
 from .media_sources import search_commons, MediaCandidate
 from .visual_matcher import OpenCLIPMatcher, match_scene
@@ -111,6 +111,15 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
                 found+=search(lookup,limit=12,filetype="bitmap")
         else:
             found=search(lookup,limit=15)
+        if scene.get("asset_purpose")=="actor":
+            # A labelled anatomy diagram can score highly for "shark"
+            # while looking absurd as an animated character.
+            diagram_terms=re.compile(
+                r"\\b(anatomy|anatomical|diagram|labelled|labeled|"
+                r"dissection|skeleton|cross[- ]section|schematic|"
+                r"bones|organ systems)\\b",re.IGNORECASE)
+            found=[item for item in found
+                   if not diagram_terms.search(item.title+" "+item.description)]
         seen=set()
         unique=[]
         for item in found:
