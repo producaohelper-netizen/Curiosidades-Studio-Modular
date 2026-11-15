@@ -11,7 +11,7 @@ import struct
 from pathlib import Path
 from unittest.mock import patch
 from PIL import Image, ImageDraw
-from universal_engine.production import run, Settings, ProductionError, asset_path
+from universal_engine.production import run, Settings, ProductionError, asset_path, prepare_scene_assets
 from universal_engine.visual_pipeline import SceneAsset
 
 class PipelineIntegrationTests(unittest.TestCase):
@@ -69,6 +69,28 @@ class PipelineIntegrationTests(unittest.TestCase):
             return {"output":str(output)}
         return fake_asset,fake_tts,fake_clip
 
+    def test_vector_ollama_fallback_without_images_or_gpu(self):
+        self.settings.vector_fallback=True
+        scene=self.scene(0)
+        scene["visual_style"]="cartoon"
+        def no_assets(*args,**kwargs):
+            return SceneAsset("s000",None,"unavailable","",True,
+                              "Sem banco de imagens","", "", "", "")
+        def fake_vector(actor,out,model):
+            out=Path(out);out.parent.mkdir(parents=True,exist_ok=True)
+            image=Image.new("RGBA",(80,80),(0,0,0,0))
+            ImageDraw.Draw(image).ellipse((9,8,70,72),fill=(255,140,33,255))
+            image.save(out)
+            return out
+        with patch("universal_engine.production.generate_actor",side_effect=fake_vector):
+            with patch("universal_engine.production.verify_foreground",
+                       return_value={"score":.29}):
+                bg,layers,manifest=prepare_scene_assets(scene,self.root/"asset_test",
+                                  self.settings,get_asset=no_assets)
+        self.assertTrue(bg.is_file())
+        self.assertEqual(manifest.source,"local-ollama-vector")
+        self.assertTrue(layers["shared_octopus"].is_file())
+        self.assertTrue(manifest.review_required)
     def test_fifty_scenes_nearly_five_minutes(self):
         asset,tts,clip=self.fixtures()
         def fake_mux(clips, output):
