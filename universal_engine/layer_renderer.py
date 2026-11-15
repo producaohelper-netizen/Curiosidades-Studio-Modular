@@ -27,12 +27,12 @@ def cover(image:Image.Image, size:tuple[int,int]):
 
 def render_frame(scene:dict, time_sec:float, background:Image.Image,
                  assets:dict[str,Image.Image], size=(960,540),
-                 *, missing_is_error:bool=True) -> Image.Image:
+                 *, missing_is_error:bool=True,layer_cache=None) -> Image.Image:
     validate(scene)
     w,h=size
     if not isinstance(background,Image.Image):
         raise RenderError("Cenario de fundo ausente")
-    canvas=cover(background.convert("RGBA"),size)
+    canvas=background.copy() if background.mode=="RGBA" and background.size==size else cover(background.convert("RGBA"),size)
     poses=motion(scene,time_sec)
     for actor in scene["actors"]:
         name=actor["id"]
@@ -47,13 +47,20 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
             img=select_frame(img,time_sec,rows=sheet["rows"],columns=sheet["columns"],
                              frames=sheet["frames"],pose_fps=float(sheet.get("fps",8)),
                              loop=bool(sheet.get("loop",True)))
-        layer=img.convert("RGBA")
+        source=img.convert("RGBA")
         scale=float(transform["scale"])*float(actor.get("size",.28))
         px=max(1,int(w*scale))
-        py=max(1,int(px*layer.height/layer.width))
-        layer=layer.resize((px,py),Image.Resampling.LANCZOS)
-        if abs(transform["angle"])>0.1:
-            layer=layer.rotate(-float(transform["angle"]),resample=Image.Resampling.BICUBIC,expand=True)
+        py=max(1,int(px*source.height/source.width))
+        angle=round(float(transform["angle"]),1)
+        key=(actor["asset_id"],id(img),px,py,angle)
+        if layer_cache is not None and key in layer_cache:
+            layer=layer_cache[key].copy()
+        else:
+            layer=source.resize((px,py),Image.Resampling.LANCZOS)
+            if abs(angle)>0.1:
+                layer=layer.rotate(-angle,resample=Image.Resampling.BICUBIC,expand=True)
+            if layer_cache is not None and len(layer_cache)<120:
+                layer_cache[key]=layer.copy()
         alpha=float(transform.get("opacity",1))
         if alpha<1:
             layer.putalpha(layer.getchannel("A").point(lambda x:int(x*alpha)))
@@ -107,7 +114,8 @@ def render_clip(scene:dict, background_path:str|Path, asset_paths:dict[str,str|P
                 fps:int=24, size=(960,540), ffmpeg="ffmpeg"):
     validate(scene)
     if not 8<=fps<=30:raise RenderError("FPS fora da faixa permitida")
-    background=Image.open(background_path).convert("RGBA")
+    background=cover(Image.open(background_path).convert("RGBA"),size)
+    layer_cache={}
     layers={name:Image.open(p).convert("RGBA") for name,p in asset_paths.items()}
     for actor in scene["actors"]:
         if actor["asset_id"] not in layers:
@@ -126,7 +134,7 @@ def render_clip(scene:dict, background_path:str|Path, asset_paths:dict[str,str|P
     proc=subprocess.Popen(args,stdin=subprocess.PIPE,stderr=subprocess.PIPE)
     try:
         for i in range(count):
-            frame=render_frame(scene,i/fps,background,layers,size)
+            frame=render_frame(scene,i/fps,background,layers,size,layer_cache=layer_cache)
             proc.stdin.write(frame.tobytes())
         proc.stdin.close()
         error=proc.stderr.read()
