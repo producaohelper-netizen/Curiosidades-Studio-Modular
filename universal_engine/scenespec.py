@@ -113,6 +113,10 @@ def motion(scene: dict, at: float) -> dict:
                 dx = .06 if sx < .5 else .94
             s["x"] = sx+(dx-sx)*ease
             s["y"] = sy+(dy-sy)*ease
+            if action == "enter":
+                s["opacity"] = ease
+            elif action == "exit":
+                s["opacity"] = 1-ease
             if p >= 1: origin[target]["x"],origin[target]["y"] = dx,dy
         elif action == "rotate":
             s["angle"] = float(step.get("degrees", 360))*ease
@@ -125,8 +129,6 @@ def motion(scene: dict, at: float) -> dict:
             s["highlight"] = True
         elif action in ("emit_particles", "reveal"):
             s["effect"] = str(step.get("effect", "sparkles"))
-        elif action == "exit":
-            s["opacity"] = 1-ease
     return state
 
 def load(path: str | Path) -> dict:
