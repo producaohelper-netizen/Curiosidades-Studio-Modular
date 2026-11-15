@@ -83,18 +83,29 @@ def download_model(model: Path, *, opener=urlopen):
             raise
     return model
 
+def find_ffmpeg_bin(voice_path):
+    if shutil.which('ffmpeg') and shutil.which('ffprobe'):
+        return ''
+    root=Path(voice_path).resolve().parent.parent
+    for folder in (root/'tools',root/'bin'):
+        if not folder.is_dir():continue
+        for command in list(folder.rglob('ffmpeg.exe' if os.name=='nt' else 'ffmpeg'))[:40]:
+            partner=command.parent/('ffprobe.exe' if os.name=='nt' else 'ffprobe')
+            if partner.is_file():return str(command.parent)
+    raise BootstrapError('FFmpeg/FFprobe não encontrados nas ferramentas do Studio')
+
 def check_runtime(*, voice_path, packages=None, install=True, downloader=download_model):
     missing=missing_packages() if packages is None else packages
     if missing and not install:
         raise BootstrapError("Dependências não instaladas: "+", ".join(missing))
     if missing:install_missing(missing)
-    if not (shutil.which("ffmpeg") and shutil.which("ffprobe")):
-        raise BootstrapError("FFmpeg/FFprobe ausentes do PATH; instale binários oficiais")
+    ffmpeg_dir=find_ffmpeg_bin(voice_path)
     model=Path(voice_path)
     if not model.is_file() or not Path(str(model)+".json").is_file():
         downloader(model)
     voice=piper_executable()
     return {"piper":voice,"voice_model":str(model.resolve()),
+            "ffmpeg_bin_dir":ffmpeg_dir,
             "python":sys.executable,"status":"ready_dependencies",
             "comfy_ui_art_assets":"still_requires_model_and_local_server",
             "ollama":"requires_preinstalled_local_model",
