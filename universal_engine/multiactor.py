@@ -46,7 +46,7 @@ def illustrated_actors(scene, work, *, provider=build_scene_asset,
             if len(str(label).strip())<5:
                 raise MultiActorError("Ator sem descrição visual suficiente: "+key)
             actor_scene={"scene_id":"actor-"+key,"visual_style":"cartoon",
-                         "visual_query_en":str(label),
+                         "visual_query_en":str(label),"asset_purpose":"actor",
                          "search_terms_en":str(actor.get("search_terms_en") or label)}
             result=provider(actor_scene,work/"search"/key,
                             comfy_workflow=None)
