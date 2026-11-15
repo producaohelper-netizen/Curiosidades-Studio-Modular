@@ -32,6 +32,16 @@ class LayerRendererTests(unittest.TestCase):
   b=render_frame(SCENES[0],4.2,bg,images,size=(320,180))
   self.assertIsNotNone(ImageChops.difference(a,b).getbbox())
   self.assertEqual(a.size,(320,180))
+ def test_callout_is_legible_overlay_not_static_card(self):
+  scene={**SCENES[0],"callout":"Nuvem de tinta"}
+  with Image.open(self.background) as bg:
+   layers={name:Image.open(path) for name,path in self.assets.items()}
+   try:
+    no_caption=render_frame({**scene,"callout":""},1.2,bg,layers,size=(640,360))
+    captioned=render_frame(scene,1.2,bg,layers,size=(640,360))
+    self.assertIsNotNone(ImageChops.difference(no_caption,captioned).getbbox())
+   finally:
+    for layer in layers.values():layer.close()
  def test_no_fake_asset_on_missing_image(self):
   with Image.open(self.background) as bg:
    with self.assertRaises(RenderError):
