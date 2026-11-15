@@ -38,6 +38,8 @@ jobs:
           $exe = Get-Item "CuriosidadesStudio_Unificado_Windows_CANDIDATO.exe"
           Write-Host "Binario: $($exe.Length) bytes"
           if ($exe.Length -lt 100000) { throw "Arquivo muito pequeno" }
+      - name: Verificar componentes obrigatorios do candidato
+        run: python -m qa.windows_package_check .
       - name: Empacotar programa e código, sem prometer publicação
         shell: pwsh
         run: |
