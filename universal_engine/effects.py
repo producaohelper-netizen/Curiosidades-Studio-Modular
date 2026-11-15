@@ -3,12 +3,13 @@
 Effects are derived from the action timeline and remain deterministic for a
 given timestamp; no random per-frame flashing or movie stock assets.
 """
-from PIL import ImageDraw
+from PIL import Image,ImageDraw
 import math
 import random
 
 def paint_effect(canvas, effect, x, y, radius, age, identity=""):
-    draw=ImageDraw.Draw(canvas,"RGBA")
+    overlay=Image.new("RGBA",canvas.size,(0,0,0,0))
+    draw=ImageDraw.Draw(overlay)
     age=max(0.0,float(age))
     radius=max(8,int(radius))
     name=str(effect).casefold()
@@ -53,3 +54,4 @@ def paint_effect(canvas, effect, x, y, radius, age, identity=""):
             rr=max(2,round(radius*.055))
             draw.line((xx-rr,yy,xx+rr,yy),fill=(255,236,140,220),width=3)
             draw.line((xx,yy-rr,xx,yy+rr),fill=(255,236,140,220),width=3)
+    canvas.alpha_composite(overlay)
