@@ -413,16 +413,25 @@ def run(settings: Settings, *, story_writer=write_story,
         credits=[]
         seen=set()
         for item in asset_log:
-            source=item.get("original_url") or item.get("file")
-            if not source or source in seen:
-                continue
-            seen.add(source)
-            credits.append(
-                "Fonte: "+str(item.get("source",""))+"\n"+
-                "Autor/crédito: "+str(item.get("attribution",""))+"\n"+
-                "Licença: "+str(item.get("license_name",""))+"\n"+
-                "Link: "+str(item.get("original_url",""))+"\n"
-            )
+            sources=[item]
+            if item.get("source")=="illustrated-multi-actor":
+                manifest=Path(item.get("original_url") or "")
+                if not manifest.is_file():
+                    raise ProductionError("Créditos individuais de personagens ausentes")
+                sources=json.loads(manifest.read_text(encoding="utf8"))
+                if not isinstance(sources,list) or not sources:
+                    raise ProductionError("Manifesto de licenças de personagens inválido")
+            for credit in sources:
+                source=credit.get("original_url") or credit.get("file")
+                if not source or source in seen:
+                    continue
+                seen.add(source)
+                credits.append(
+                    "Fonte: "+str(credit.get("source",""))+"\n"+
+                    "Autor/crédito: "+str(credit.get("attribution",""))+"\n"+
+                    "Licença: "+str(credit.get("license_name",""))+"\n"+
+                    "Link: "+str(credit.get("original_url",""))+"\n"
+                )
         (root/"creditos_para_descricao_youtube.txt").write_text(
             "CRÉDITOS DE IMAGENS — verificar licenças antes de publicar\n\n"+
             "\n".join(credits),encoding="utf8")
