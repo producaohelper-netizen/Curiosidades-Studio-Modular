@@ -71,16 +71,24 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
             layer.putalpha(layer.getchannel("A").point(lambda x:int(x*alpha)))
         pos=(int(transform["x"]*w-layer.width*.5),
              int(transform["y"]*h-layer.height*.5))
+        # Effects belong behind actors, at a bounded, meaningful origin.
+        # Formerly an ink cloud 2x the sprite width obscured the entire scene.
+        if transform.get("effect"):
+            effect=str(transform["effect"])
+            ink=("ink" in effect.casefold() or "tinta" in effect.casefold())
+            volcanic=any(v in effect.casefold() for v in
+                         ("smoke","eruption","vulc","lava"))
+            ex=int(transform["x"]*w+(px*.2 if ink else 0))
+            ey=int(transform["y"]*h-(py*.30 if volcanic else 0))
+            radius=max(9,int(min(px*.23,w*.10)))
+            paint_effect(canvas,effect,ex,ey,radius,
+                         transform.get("effect_elapsed",0),name)
         canvas.alpha_composite(layer,pos)
         if transform.get("highlight"):
             d=ImageDraw.Draw(canvas)
             x=int(transform["x"]*w);y=int(transform["y"]*h)
             d.ellipse((x-px*.6,y-py*.6,x+px*.6,y+py*.6),
                       outline="#fbe671",width=max(2,w//300))
-        if transform.get("effect"):
-            paint_effect(canvas,transform["effect"],int(transform["x"]*w),
-                         int(transform["y"]*h),px,
-                         transform.get("effect_elapsed",0),name)
     # Uma palavra-chave discreta reforça a explicação sem virar slide estático.
     callout=scene.get("callout","")
     if isinstance(callout,str) and 1<=len(callout)<=45 and time_sec>=.45:
