@@ -25,6 +25,7 @@ from .scenespec import validate
 from .sprite_factory import produce_sprite
 from .photo_layers import extract_for_scene
 from .foreground_match import verify_foreground
+from .comfy_auto import auto_workflow, ComfySetupError
 
 
 class ProductionError(RuntimeError):
@@ -44,6 +45,7 @@ class Settings:
     topic: str | None = None
     approval_required: bool = True
     sprite_workflow: str | None = None
+    auto_comfy: bool = True
 
 
 def atomic_json(path: Path, obj):
@@ -266,6 +268,15 @@ def run(settings: Settings, *, story_writer=write_story,
         identity=check_character_consistency(scenes)
         atomic_json(root/"storyboard.json", storyboard)
         stage("visual_plan", scenes=len(scenes), **identity)
+        if settings.auto_comfy and (not settings.comfy_workflow or not settings.sprite_workflow):
+            try:
+                chosen=auto_workflow(root/"model_comfy_api.json")
+                settings.comfy_workflow=settings.comfy_workflow or chosen["workflow"]
+                settings.sprite_workflow=settings.sprite_workflow or chosen["workflow"]
+                stage("comfy_checkpoint_detected", checkpoint=chosen["checkpoint"])
+            except Exception as exc:
+                stage("comfy_unavailable", note=str(exc)[:220],
+                      fallback="licensed-photos + rembg for one-actor scenes")
         clips = []
         sound_total = 0.
         asset_log = []
@@ -317,13 +328,15 @@ def cli():
     ap.add_argument("--llm", default="qwen2.5:7b")
     ap.add_argument("--comfy-workflow")
     ap.add_argument("--sprite-workflow")
+    ap.add_argument("--disable-auto-comfy",action="store_true")
     ap.add_argument("--topic")
     ap.add_argument("--quality", choices=["720", "1080"], default="720")
     args = ap.parse_args()
     width, height = (1920,1080) if args.quality == "1080" else (1280,720)
     settings = Settings(args.workspace,args.voice_model,args.piper,args.llm,
                         args.comfy_workflow,24,width,height,args.topic,
-                        sprite_workflow=args.sprite_workflow)
+                        sprite_workflow=args.sprite_workflow,
+                        auto_comfy=not args.disable_auto_comfy)
     try:
         run(settings)
     except Exception as exc:
