@@ -4,6 +4,9 @@ on:
     paths:
       - 'ci/live_multi_actor.py'
       - 'universal_engine/multiactor.py'
+      - 'universal_engine/style_matcher.py'
+      - 'universal_engine/visual_pipeline.py'
+      - 'universal_engine/scenespec.py'
       - '.github/workflows/live-multi-actor.yml'
   workflow_dispatch:
 jobs:
