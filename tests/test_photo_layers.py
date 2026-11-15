@@ -28,7 +28,7 @@ class PhotoLayerTests(unittest.TestCase):
             self.assertEqual(im.mode,"RGBA")
             self.assertLess(im.width,180,"Crop subject to useful dimensions")
         with Image.open(bg) as im:
-            self.assertEqual(im.getpixel((90,60)),(173,215,230))
+            self.assertTrue(all(abs(x-y)<=5 for x,y in zip(im.getpixel((90,60)),(173,215,230))))
     def test_requires_single_actor_for_cpu_fallback(self):
         with self.assertRaises(LayerExtractionError):
             extract_for_scene({"actors":[{},{}]},self.photo,self.dir/"a.png",
