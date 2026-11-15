@@ -100,7 +100,7 @@ class PipelineIntegrationTests(unittest.TestCase):
             result=run(self.settings,
                 topic_selector=lambda s:{"title":"Defesas dos animais","trending":False},
                 story_writer=lambda topic,llm:{"title":topic,"sections":[],
-                    "narration":"Uma fala de teste","words":680},
+                    "narration":" ".join(self.scene(i)["narration"] for i in range(50)),"words":680},
                 planner=lambda text,max_words:{"scenes":[self.scene(i) for i in range(50)]},
                 asset_provider=asset,tts=tts,clip_renderer=clip,
                 mux=fake_mux,
@@ -124,7 +124,7 @@ class PipelineIntegrationTests(unittest.TestCase):
             result=run(self.settings,
                 topic_selector=lambda s:{"title":"Defesas dos animais","trending":False},
                 story_writer=lambda t,l:{"title":t,"sections":[],
-                    "narration":"Uma fala de teste","words":680},
+                    "narration":" ".join(self.scene(i)["narration"] for i in range(50)),"words":680},
                 planner=lambda text,max_words:{"scenes":[self.scene(i) for i in range(50)]},
                 asset_provider=asset,tts=variable_tts,clip_renderer=clip,
                 mux=fake_mux,probe=lambda video:300.0)
