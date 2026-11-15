@@ -73,12 +73,14 @@ def parse_image(page: dict) -> MediaCandidate | None:
     return MediaCandidate(title, url, page_url, license_name, license_url,
                           artist, description, line)
 
-def search_commons(query: str, limit: int = 20, fetch_json=None) -> list[MediaCandidate]:
+def search_commons(query: str, limit: int = 20, fetch_json=None,
+                   filetype: str = 'bitmap') -> list[MediaCandidate]:
     """Searches files by title/description; caller can inject deterministic HTTP fixture."""
     if not isinstance(query, str) or not query.strip(): raise ValueError("query vazia")
     limit = max(1, min(int(limit), 30))
+    if filetype not in ("bitmap","drawing"):raise ValueError("filetype inválido")
     params = {
-        "action":"query","generator":"search","gsrsearch":query+" filetype:bitmap",
+        "action":"query","generator":"search","gsrsearch":query+" filetype:"+filetype,
         "gsrnamespace":"6","gsrlimit":str(limit),"prop":"imageinfo",
         "iiprop":"url|extmetadata","iiurlwidth":"1280","format":"json",
         "formatversion":"2"
