@@ -13,6 +13,8 @@ from .scenespec import validate, motion
 from .camera import apply_camera
 from .expressive_poses import expressive_frame
 from .speech_pose_sync import speech_pose_frame
+from .mouth_sync import wav_envelope
+from .mouth_overlay import compose_mouth
 from .effects import paint_effect,paint_reaction
 from .deformation import organic_sway, organic_swim
 from .environment_motion import draw_environment
@@ -31,7 +33,7 @@ def cover(image:Image.Image, size:tuple[int,int]):
 
 def render_frame(scene:dict, time_sec:float, background:Image.Image,
                  assets:dict[str,Image.Image], size=(960,540),
-                 *, missing_is_error:bool=True,layer_cache=None) -> Image.Image:
+                 *, missing_is_error:bool=True,layer_cache=None,mouth_envelope=None) -> Image.Image:
     validate(scene)
     w,h=size
     if not isinstance(background,Image.Image):
@@ -64,6 +66,15 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
                                      frames=sheet["frames"],fps=float(sheet.get("fps",8)),
                                      loop=bool(sheet.get("loop",True)),
                                      hold_first=float(sheet.get("hold_first",0)))
+        mouth=actor.get("mouth")
+        if mouth is not None:
+            if mouth_envelope is None:
+                raise RenderError("Boca animada exige envelope de audio WAV")
+            mouth_asset=assets.get(mouth.get("asset_id"))
+            if mouth_asset is None:
+                raise RenderError("Folha de boca ausente: "+str(mouth.get("asset_id")))
+            img=compose_mouth(img,mouth_asset,mouth_envelope,time_sec,
+                              x=mouth["x"],y=mouth["y"],width=mouth["width"])
         source=img.convert("RGBA")
         scale=float(transform["scale"])*float(actor.get("size",.28))
         px=max(1,int(w*scale))
@@ -154,6 +165,9 @@ def render_clip(scene:dict, background_path:str|Path, asset_paths:dict[str,str|P
         if actor["asset_id"] not in layers:
             raise RenderError("Actor sem asset: "+actor["asset_id"])
     length=audio_duration(wav_path)
+    mouth_envelope=(wav_envelope(wav_path)
+                    if any(actor.get("mouth") is not None for actor in scene["actors"])
+                    else None)
     if abs(length-float(scene["duration_target_seconds"]))>5:
         raise RenderError("A duracao narrada diverge do planejamento em mais de 5s")
     count=math.ceil(length*fps)
@@ -167,7 +181,8 @@ def render_clip(scene:dict, background_path:str|Path, asset_paths:dict[str,str|P
     proc=subprocess.Popen(args,stdin=subprocess.PIPE,stderr=subprocess.PIPE)
     try:
         for i in range(count):
-            frame=render_frame(scene,i/fps,background,layers,size,layer_cache=layer_cache)
+            frame=render_frame(scene,i/fps,background,layers,size,layer_cache=layer_cache,
+                               mouth_envelope=mouth_envelope)
             proc.stdin.write(frame.tobytes())
         proc.stdin.close()
         error=proc.stderr.read()
