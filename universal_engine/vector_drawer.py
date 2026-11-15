@@ -136,9 +136,14 @@ def local_instructions(actor,model="qwen2.5:7b",requester=None):
              "options":{"temperature":.15,"num_predict":1800}}
     try:
         raw=requester(payload)
-        data=json.loads(raw["response"])
     except (OSError,KeyError,TypeError,ValueError) as exc:
-        raise VectorArtError("IA local retornou JSON inválido: "+str(exc)) from exc
+        raise VectorArtError('Falha comunicando com Ollama: '+str(exc)) from exc
+    try:
+        data=json.loads(raw['response'])
+    except (KeyError,TypeError,ValueError) as exc:
+        preview=str(raw.get('response',''))[:160] if isinstance(raw,dict) else ''
+        reason=str(raw.get('done_reason','?')) if isinstance(raw,dict) else '?'
+        raise VectorArtError('JSON inválido; done_reason='+reason+'; início='+repr(preview)+'; erro='+str(exc)) from exc
     validate_art(data)
     return data,prompt
 
