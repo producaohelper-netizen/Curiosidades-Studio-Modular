@@ -55,6 +55,17 @@ class VectorDrawingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             path=rasterize(result,Path(folder)/"normalized.png")
             self.assertTrue(path.is_file())
+    def test_clip_small_overshoot_from_ollama(self):
+        raw={"e":[{"t":"ellipse","b":[-8,40,516,490],
+                   "f":"#66BBCC","s":"#102030","w":3} for _ in range(8)]}
+        obj=normalize_simple_shapes(raw)
+        self.assertEqual(obj["elements"][0]["bbox"],[0.0,40,512.0,490])
+    def test_reject_extreme_coords_even_if_numbers(self):
+        raw={"e":[{"t":"ellipse","b":[0,0,100,100],
+                   "f":"#66BBCC","s":"#102030","w":3} for _ in range(8)]}
+        raw["e"][0]["b"][0]=-999
+        with self.assertRaises(VectorArtError):
+            normalize_simple_shapes(raw)
     def test_invalid_optional_coordinates_are_never_faked(self):
         raw={"e":[{"t":"ellipse","b":[0,0,100,100],
                    "f":"#FFCC33","s":"#102030","w":4}
