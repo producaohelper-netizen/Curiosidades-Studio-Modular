@@ -67,7 +67,7 @@ def validate(scene: dict) -> dict:
         if step["action"] in ("move", "enter", "exit", "escape", "approach", "follow", "orbit"):
             if step.get("action") == "approach" and step.get("towards") not in ids:
                 raise SceneError("approach exige towards valido")
-            if step.get("action") == "follow" and step.get("towards") not in ids:
+            if step.get("action") in ("follow", "orbit") and step.get("towards") not in ids:
                 raise SceneError("follow exige towards valido")
         if "duration" in step and (not isinstance(step["duration"], (int, float)) or
                                    step["duration"] <= 0 or at + step["duration"] > duration + 0.001):
@@ -91,44 +91,59 @@ def motion(scene: dict, at: float) -> dict:
                        "scale": float(a.get("scale", 1.0)), "angle": 0.0,
                        "emotion": "neutral", "opacity": 1.0,
                        "effect": None, "highlight": False} for a in scene["actors"]}
-    origin = {a: dict(s) for a,s in state.items()}
-    for i, step in enumerate(scene["timeline"]):
+    moves = {"move", "escape", "enter", "exit", "approach", "follow", "orbit"}
+    timeline=scene["timeline"]
+    for i, step in enumerate(timeline):
         start = float(step["at"])
         if at < start: break
         action = step["action"]
         target = step.get("target")
         duration = float(step.get("duration", .6))
-        p = min(1.0, max(0.0, (at-start)/duration))
+        # Position actions interrupted by a subsequent movement start at the
+        # *previous evaluated pose*, not the original actor position. This
+        # avoids the visible teleporting observed in concatenated actions.
+        cutoff=at
+        if action in moves:
+            for subsequent in timeline[i+1:]:
+                if subsequent.get("target")==target and subsequent["action"] in moves:
+                    cutoff=min(cutoff,float(subsequent["at"]))
+                    break
+        p = min(1.0, max(0.0, ((cutoff if action in moves else at)-start)/duration))
         ease = p*p*(3-2*p)
-        if action == "camera_pan": continue
+        if action in ("camera_pan","camera_push"): continue
         s = state[target]
-        if action in ("move", "escape", "enter", "exit", "approach", "follow"):
-            sx, sy = origin[target]["x"], origin[target]["y"]
-            dx = float(step.get("to_x", sx))
-            dy = float(step.get("to_y", sy))
-            if action in ("approach", "follow"):
-                other = state[step["towards"]]
-                dx,dy = other["x"] - .12, other["y"]
-            if action == "escape" and "to_x" not in step:
-                dx = .06 if sx < .5 else .94
-            s["x"] = sx+(dx-sx)*ease
-            s["y"] = sy+(dy-sy)*ease
-            if action == "enter":
-                s["opacity"] = ease
-            elif action == "exit":
-                s["opacity"] = 1-ease
-            if p >= 1: origin[target]["x"],origin[target]["y"] = dx,dy
-        elif action == "rotate":
-            s["angle"] = float(step.get("degrees", 360))*ease
-        elif action in ("scale", "pulse"):
-            size = float(step.get("factor", 1.2))
-            s["scale"] = 1 + (size-1)*(math.sin(p*math.pi) if action == "pulse" else ease)
-        elif action == "react":
-            s["emotion"] = str(step.get("emotion", "surprised"))
-        elif action == "highlight":
-            s["highlight"] = True
-        elif action in ("emit_particles", "reveal"):
-            s["effect"] = str(step.get("effect", "sparkles"))
+        if action in ("move","escape","enter","exit","approach","follow"):
+            sx,sy=s["x"],s["y"]
+            dx=float(step.get("to_x",sx))
+            dy=float(step.get("to_y",sy))
+            if action in ("approach","follow"):
+                other=state[step["towards"]]
+                dx,dy=other["x"]-.12,other["y"]
+            if action=="escape" and "to_x" not in step:
+                dx=.06 if sx<.5 else .94
+            s["x"]=sx+(dx-sx)*ease
+            s["y"]=sy+(dy-sy)*ease
+            if action=="enter":s["opacity"]=ease
+            elif action=="exit":s["opacity"]=1-ease
+        elif action=="orbit":
+            focus=state[step["towards"]]
+            sx,sy=s["x"]-focus["x"],s["y"]-focus["y"]
+            radius=max(.04,math.hypot(sx,sy))
+            initial=math.atan2(sy,sx)
+            radians=math.radians(float(step.get("degrees",360)))*ease
+            s["x"]=focus["x"]+radius*math.cos(initial+radians)
+            s["y"]=focus["y"]+radius*math.sin(initial+radians)
+        elif action=="rotate":
+            s["angle"]=float(step.get("degrees",360))*ease
+        elif action in ("scale","pulse"):
+            size=float(step.get("factor",1.2))
+            s["scale"]=1+(size-1)*(math.sin(p*math.pi) if action=="pulse" else ease)
+        elif action=="react":
+            s["emotion"]=str(step.get("emotion","surprised"))
+        elif action=="highlight":
+            s["highlight"]=True
+        elif action in ("emit_particles","reveal"):
+            s["effect"]=str(step.get("effect","sparkles"))
     return state
 
 def load(path: str | Path) -> dict:
