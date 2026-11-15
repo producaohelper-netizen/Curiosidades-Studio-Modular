@@ -51,7 +51,7 @@ class Settings:
     approval_required: bool = True
     sprite_workflow: str | None = None
     auto_comfy: bool = True
-    vector_fallback: bool = True
+    vector_fallback: bool = False
 
 
 def atomic_json(path: Path, obj):
@@ -409,6 +409,7 @@ def cli():
     ap.add_argument("--comfy-workflow")
     ap.add_argument("--sprite-workflow")
     ap.add_argument("--disable-auto-comfy",action="store_true")
+    ap.add_argument("--experimental-vector",action="store_true",help="Permite desenhos geométricos não homologados; NÃO usar para publicação")
     ap.add_argument("--topic")
     ap.add_argument("--quality", choices=["720", "1080"], default="720")
     args = ap.parse_args()
@@ -416,7 +417,8 @@ def cli():
     settings = Settings(args.workspace,args.voice_model,args.piper,args.llm,
                         args.comfy_workflow,24,width,height,args.topic,
                         sprite_workflow=args.sprite_workflow,
-                        auto_comfy=not args.disable_auto_comfy)
+                        auto_comfy=not args.disable_auto_comfy,
+                        vector_fallback=args.experimental_vector)
     try:
         run(settings)
     except Exception as exc:
