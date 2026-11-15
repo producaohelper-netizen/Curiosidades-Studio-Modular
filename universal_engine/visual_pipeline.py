@@ -16,7 +16,7 @@ from functools import lru_cache
 from .media_sources import search_commons, MediaCandidate
 from .visual_matcher import OpenCLIPMatcher, match_scene
 from .local_generator import generate, GenerationError
-from .style_matcher import cartoon_indices
+from .style_matcher import cartoon_indices, actor_indices
 
 class AssetPipelineError(RuntimeError):
     pass
@@ -143,6 +143,12 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
                 indices=cartoon_indices(ranker,images)
                 if not indices:
                     errors.append("Fotos realistas não atendem ao estilo de animação 2D")
+            if indices and scene.get("asset_purpose")=="actor":
+                suitable=actor_indices(ranker,[images[i] for i in indices])
+                indices=[indices[i] for i in suitable]
+                if not indices:
+                    errors.append(
+                        "Desenhos com anotações/anatomia não servem como atores de animação")
             decision=match_scene(scene,[candidates[i] for i in indices],
                                  [images[i] for i in indices],ranker) if indices else None
             if decision is not None and decision.status=="selected":
