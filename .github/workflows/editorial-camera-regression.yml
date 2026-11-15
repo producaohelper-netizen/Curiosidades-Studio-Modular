@@ -6,9 +6,11 @@ on:
       - 'universal_engine/scenespec.py'
       - 'universal_engine/expressive_poses.py'
       - 'universal_engine/layer_renderer.py'
+      - 'universal_engine/speech_pose_sync.py'
       - 'tests/test_editorial_integrity.py'
       - 'tests/test_expressive_poses.py'
       - 'tests/test_renderer_expressive_pose_integration.py'
+      - 'tests/test_speech_pose_sync.py'
       - 'tests/test_video_integrity_audit.py'
       - 'tests/test_camera_timing_regressions.py'
       - 'tests/test_camera_parameter_validation.py'
@@ -32,6 +34,7 @@ jobs:
             tests/test_editorial_integrity.py \
             tests/test_expressive_poses.py \
             tests/test_renderer_expressive_pose_integration.py \
+            tests/test_speech_pose_sync.py \
             tests/test_video_integrity_audit.py \
             tests/test_camera_timing_regressions.py \
             tests/test_camera_parameter_validation.py
