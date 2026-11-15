@@ -89,6 +89,8 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
         except (ValueError,TypeError,OSError,KeyError):
             pass
     lookup=query or scene.get("search_terms_en") or prompt
+    if scene.get("visual_style")=="cartoon":
+        lookup=str(lookup)+" cartoon illustration drawing"
     search=commons_search or search_commons
     download=downloader or download_commons
     candidates=[];images=[];errors=[]
