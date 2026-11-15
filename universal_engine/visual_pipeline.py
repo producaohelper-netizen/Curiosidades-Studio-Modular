@@ -114,7 +114,7 @@ def build_scene_asset(scene:dict, workspace: str|Path, *,
                                   True,"Revisão factual e atribuição ainda obrigatórias",prompt,
                                   c.license_name,c.license_url,c.page_url)
                 return _save(result,work)
-            errors.append(decision.reason)
+            errors.append(f'{decision.reason}; similaridade={decision.similarity}; margem={decision.margin}')
         except Exception as exc:
             errors.append(f"OpenCLIP: {type(exc).__name__}")
     if comfy_workflow:
