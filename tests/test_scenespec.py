@@ -59,4 +59,13 @@ class SceneSpecTests(unittest.TestCase):
   s=copy.deepcopy(SCENES[0])
   s["timeline"][1]["at"]=-1
   with self.assertRaises(SceneError):validate(s)
+
+ def test_enter_exit_opacity(self):
+  s=copy.deepcopy(SCENES[0])
+  s["timeline"]=[{"at":0,"action":"enter","target":"polvo","to_x":.5,"duration":2},
+                 {"at":3,"action":"exit","target":"polvo","to_x":.9,"duration":2}]
+  self.assertLess(motion(s,.1)["polvo"]["opacity"],.2)
+  self.assertGreater(motion(s,2.1)["polvo"]["opacity"],.9)
+  self.assertLess(motion(s,4.9)["polvo"]["opacity"],.2)
+
 if __name__=="__main__":unittest.main()
