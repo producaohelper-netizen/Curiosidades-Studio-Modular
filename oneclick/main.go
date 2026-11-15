@@ -1,0 +1,77 @@
+// Curiosidades Studio: entrypoint único para motor local de produção.
+// Não altera Defender, não instala software escondido e não publica vídeos.
+package main
+
+import (
+ "bufio"
+ "fmt"
+ "os"
+ "os/exec"
+ "path/filepath"
+ "runtime"
+ "strings"
+ "time"
+)
+
+func pythonCommand() (string, []string, error) {
+ if p:=os.Getenv("CSTUDIO_PYTHON");p!="" { return p,nil,nil }
+ for _,candidate:=range [][]string{{"py","-3"},{"python"},{"python3"}} {
+  p,e:=exec.LookPath(candidate[0]);if e!=nil{continue}
+  pre:=candidate[1:]
+  args:=append(append([]string{},pre...),"-c","import sys;print(sys.version_info.major)")
+  cmd:=exec.Command(p,args...)
+  out,e:=cmd.Output()
+  if e==nil && strings.TrimSpace(string(out))=="3"{return p,pre,nil}
+ }
+ return "",nil,fmt.Errorf("Python 3 indisponível; instale Python 3.12 antes de executar")
+}
+
+func run(base string)error{
+ py,pre,e:=pythonCommand();if e!=nil{return e}
+ root:=os.Getenv("CSTUDIO_ROOT")
+ if root=="" {
+  home,e:=os.UserHomeDir();if e!=nil{return e}
+  root=filepath.Join(home,"Videos","CuriosidadesStudio")
+ }
+ model:=os.Getenv("CSTUDIO_VOICE_MODEL")
+ if model==""{
+  model=filepath.Join(root,"models","pt_BR-faber-medium.onnx")
+ }
+ args:=append([]string{},pre...)
+ args=append(args,"-u","-m","universal_engine.production","--workspace",root,
+  "--voice-model",model,"--quality","720")
+ if t:=os.Getenv("CSTUDIO_TOPIC");t!=""{args=append(args,"--topic",t)}
+ if wf:=os.Getenv("CSTUDIO_COMFY_WORKFLOW");wf!=""{args=append(args,"--comfy-workflow",wf)}
+ if wf:=os.Getenv("CSTUDIO_SPRITE_WORKFLOW");wf!=""{args=append(args,"--sprite-workflow",wf)}
+ if voice:=os.Getenv("CSTUDIO_PIPER");voice!=""{args=append(args,"--piper",voice)}
+ if llm:=os.Getenv("CSTUDIO_OLLAMA_MODEL");llm!=""{args=append(args,"--llm",llm)}
+ env:=os.Environ()
+ env=append(env,"PYTHONUNBUFFERED=1")
+ env=append(env,"PYTHONPATH="+base)
+ cmd:=exec.Command(py,args...)
+ cmd.Dir=base;cmd.Env=env
+ cmd.Stdout=os.Stdout;cmd.Stderr=os.Stderr
+ fmt.Println("Curiosidades Studio — gerando vídeo com um clique")
+ fmt.Println("Toda geração exige revisão antes de publicação.")
+ fmt.Println("Pasta:",root)
+ return cmd.Run()
+}
+func main(){
+ exe,e:=os.Executable();if e!=nil{fmt.Fprintln(os.Stderr,e);os.Exit(1)}
+ base:=filepath.Dir(exe)
+ if e=run(base);e!=nil{
+  fmt.Fprintln(os.Stderr,"Produção interrompida:",e)
+  fmt.Fprintln(os.Stderr,"Verifique status.json na pasta de trabalho.")
+  if runtime.GOOS=="windows" {
+   fmt.Println("Pressione ENTER para fechar.")
+   bufio.NewReader(os.Stdin).ReadString('\n')
+  }
+  os.Exit(1)
+ }
+ fmt.Println("Vídeo montado. A revisão artística ainda é obrigatória.")
+ fmt.Println("Encerrado em",time.Now().Format(time.RFC1123))
+ if runtime.GOOS=="windows" {
+  fmt.Println("Pressione ENTER para fechar.")
+  bufio.NewReader(os.Stdin).ReadString('\n')
+ }
+}
