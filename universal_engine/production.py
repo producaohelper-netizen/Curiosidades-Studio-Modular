@@ -20,6 +20,7 @@ import uuid
 import unicodedata
 
 from .trends import fetch_trends, top_five
+from qa.editorial_integrity import check_storyboard
 from .storyboard_planner import plan_script
 from .visual_pipeline import build_scene_asset, SceneAsset
 from .vector_drawer import generate_actor
@@ -355,6 +356,12 @@ def run(settings: Settings, *, story_writer=write_story,
             # photographs, unless a future project explicitly chooses a hybrid.
             scene.setdefault("visual_style","cartoon")
         identity=check_character_consistency(scenes)
+        editorial=check_storyboard(story["narration"],storyboard)
+        atomic_json(root/"auditoria_editorial.json",editorial)
+        if not editorial["passed"]:
+            raise ProductionError("Storyboard reprovado antes da narração: "+
+                                  "; ".join(editorial["errors"][:5]))
+        stage("editorial_preflight_passed",scenes=len(scenes))
         atomic_json(root/"storyboard.json", storyboard)
         stage("visual_plan", scenes=len(scenes), **identity)
         # First synthesize ALL speech and calibrate actual duration before
