@@ -14,6 +14,7 @@ from PIL import Image
 from .reel_captions import caption_frame
 from .reel_caption_timing import validate_cues
 from .reel_visual_beats import reframe
+from .reel_visual_sequence import normalize_images, image_index
 
 
 class ReelRenderError(RuntimeError):
@@ -22,8 +23,10 @@ class ReelRenderError(RuntimeError):
 
 def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
                 ffmpeg="ffmpeg"):
-    if len(images) != len(cues) or not images:
-        raise ReelRenderError("É necessária uma imagem por trecho narrado")
+    try:
+        sections = normalize_images(images, len(cues))
+    except ValueError as exc:
+        raise ReelRenderError("É necessária uma imagem por trecho narrado: " + str(exc)) from exc
     if size[0] >= size[1] or fps < 12 or fps > 30:
         raise ReelRenderError("Formato vertical ou FPS inválido")
     import wave
@@ -32,15 +35,18 @@ def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
     validate_cues(cues, duration)
     backgrounds = []
     try:
-        for image_path in images:
-            with Image.open(image_path) as original:
-                image = original.convert("RGB")
-                factor = max(size[0] / image.width, size[1] / image.height)
-                scaled = image.resize((math.ceil(image.width * factor),
-                                       math.ceil(image.height * factor)), Image.Resampling.LANCZOS)
-                left = (scaled.width - size[0]) // 2
-                top = (scaled.height - size[1]) // 2
-                backgrounds.append(scaled.crop((left, top, left + size[0], top + size[1])))
+        for section in sections:
+            frames = []
+            for image_path in section:
+                with Image.open(image_path) as original:
+                    image = original.convert("RGB")
+                    factor = max(size[0] / image.width, size[1] / image.height)
+                    scaled = image.resize((math.ceil(image.width * factor),
+                                           math.ceil(image.height * factor)), Image.Resampling.LANCZOS)
+                    left = (scaled.width - size[0]) // 2
+                    top = (scaled.height - size[1]) // 2
+                    frames.append(scaled.crop((left, top, left + size[0], top + size[1])))
+            backgrounds.append(frames)
         destination = Path(output)
         destination.parent.mkdir(parents=True, exist_ok=True)
         args = [ffmpeg, "-y", "-loglevel", "error", "-f", "rawvideo",
@@ -56,7 +62,9 @@ def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
                 now = frame_index / fps
                 selected = next((i for i, cue in enumerate(cues)
                                  if cue["start"] <= now < cue["end"]), len(cues)-1)
-                visual = reframe(backgrounds[selected], now - cues[selected]["start"])
+                elapsed = now - cues[selected]["start"]
+                image_number = image_index(elapsed, len(backgrounds[selected]))
+                visual = reframe(backgrounds[selected][image_number], elapsed)
                 frame = caption_frame(visual, cues[selected]["text"])
                 process.stdin.write(frame.tobytes())
             process.stdin.close()
@@ -77,10 +85,11 @@ def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
                 "publication_approved": False,
                 "visual_review_required": True,
                 "visual_reframe_interval_seconds": 2.0,
-                "distinct_source_images": len(images)}
+                "distinct_source_images": sum(len(group) for group in sections)}
     finally:
-        for background in backgrounds:
-            background.close()
+        for group in backgrounds:
+            for background in group:
+                background.close()
 
 
 def main():
