@@ -1,5 +1,25 @@
 ## Novo direcionamento editorial — Reels (em desenvolvimento)
 
+### Renderização vertical experimental para revisão
+
+Depois de criar o áudio com `python -m universal_engine.reel_narration`,
+é possível renderizar um MP4 vertical com **quatro imagens próprias ou
+licenciadas**, uma para cada seção do roteiro:
+
+```bash
+python -m universal_engine.reel_render \
+  --narration-json saida/narracao_e_legendas.json \
+  --images gancho.png contexto.png desenvolvimento.png revelacao.png \
+  --output saida/reel_revisao.mp4
+```
+
+Requer FFmpeg e Pillow instalados. A montagem usa a duração real da narração
+e legendas temporizadas por trecho, mas ainda não implementa cortes a cada
+1–3 segundos, trilha, transições, verificação factual independente ou seleção
+automática de visuais. **Não é a versão final do modo Reels do executável**.
+A saída inclui `reel_revisao.review.json` com aprovação de publicação falsa.
+
+
 O plano **Fatos Que Parecem Mentira** exige uma segunda linha de produção,
 separada dos episódios horizontais de cinco minutos.
 
