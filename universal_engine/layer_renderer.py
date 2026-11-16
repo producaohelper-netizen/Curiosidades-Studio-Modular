@@ -19,6 +19,7 @@ from .effects import paint_effect,paint_reaction
 from .deformation import organic_sway, organic_swim
 from .environment_motion import draw_environment
 from .reel_captions import caption_frame
+from .reel_caption_timing import active_caption, validate_cues
 
 class RenderError(RuntimeError):
     pass
@@ -149,6 +150,8 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
     frame = apply_camera(canvas.convert("RGB"),scene,time_sec,poses)
     # Optional short-form subtitle; long-form scenes remain unchanged.
     caption = scene.get("reel_caption")
+    if "reel_caption_cues" in scene:
+        caption = active_caption(scene["reel_caption_cues"], time_sec)
     if caption:
         frame = caption_frame(frame, caption)
     return frame
@@ -171,6 +174,10 @@ def render_clip(scene:dict, background_path:str|Path, asset_paths:dict[str,str|P
         if actor["asset_id"] not in layers:
             raise RenderError("Actor sem asset: "+actor["asset_id"])
     length=audio_duration(wav_path)
+    if "reel_caption_cues" in scene:
+        if size[0] >= size[1]:
+            raise RenderError("Legendas sincronizadas de Reels exigem vídeo vertical")
+        validate_cues(scene["reel_caption_cues"], length)
     mouth_envelope=(wav_envelope(wav_path)
                     if any(actor.get("mouth") is not None for actor in scene["actors"])
                     else None)
