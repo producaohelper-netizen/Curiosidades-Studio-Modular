@@ -113,6 +113,17 @@ func runReelDraft(base, manifest string, images []string) error {
 func main(){
  exe,e:=os.Executable();if e!=nil{fmt.Fprintln(os.Stderr,e);os.Exit(1)}
  base:=filepath.Dir(exe)
+ if len(os.Args)==1 {
+  if err:=interactiveMode(base);err!=nil {
+   fmt.Fprintln(os.Stderr,"Operação interrompida:",err)
+   if runtime.GOOS=="windows" {
+    fmt.Println("Pressione ENTER para fechar.")
+    bufio.NewReader(os.Stdin).ReadString('\n')
+   }
+   os.Exit(2)
+  }
+  return
+ }
  if len(os.Args)>1 && os.Args[1]=="--reels" {
   if len(os.Args)!=7 {
    fmt.Fprintln(os.Stderr,"Uso: CuriosidadesStudio.exe --reels roteiro.json gancho.png contexto.png desenvolvimento.png revelacao.png")
