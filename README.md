@@ -1,5 +1,23 @@
 ## Novo direcionamento editorial — Reels (em desenvolvimento)
 
+### Modo Reels no executável Windows (experimental)
+
+Com Python, Piper, FFmpeg e dependências já instalados, o executável
+agora oferece um comando de revisão:
+
+```powershell
+.\\CuriosidadesStudio_Unificado_Windows_CANDIDATO.exe --reels roteiro.json gancho.png contexto.png desenvolvimento.png revelacao.png
+```
+
+O roteiro JSON deve passar pela validação editorial de
+`universal_engine.shortform` e conter duas referências registradas.
+O programa narra quatro partes com Piper, monta as legendas por trecho e
+gera `Videos/CuriosidadesStudio/reels/reel_revisao.mp4`. **Não verifica
+automaticamente a autenticidade das fontes ou direitos das imagens.**
+Esse comando ainda exige fornecer roteiro e quatro imagens; não é o
+fluxo automático de um clique, não publica conteúdo e não substitui
+revisão humana.
+
 ### Renderização vertical experimental para revisão
 
 Depois de criar o áudio com `python -m universal_engine.reel_narration`,
