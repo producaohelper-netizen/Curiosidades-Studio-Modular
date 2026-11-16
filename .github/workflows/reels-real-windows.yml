@@ -6,6 +6,7 @@ on:
       - 'oneclick/**'
       - 'universal_engine/reel_*.py'
       - 'universal_engine/shortform.py'
+      - 'universal_engine/reel_asset_manifest.py'
       - 'tests/test_reel*.py'
       - 'tests/test_shortform.py'
       - '.github/workflows/reels-real-windows.yml'
@@ -133,5 +134,6 @@ jobs:
             CuriosidadesStudio_Windows_Reels_CANDIDATO.exe
             reel_test/output/reel_real_piper.mp4
             reel_test/output/verification.json
+            reel_test/full_exe/reels/reel_revisao.mp4
             reel_test/full_exe/reels/reel_revisao.review.json
           retention-days: 7
