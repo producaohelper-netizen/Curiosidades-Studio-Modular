@@ -15,6 +15,7 @@ from .reel_captions import caption_frame
 from .reel_caption_timing import validate_cues
 from .reel_visual_beats import reframe
 from .reel_visual_sequence import normalize_images, image_index
+from .reel_caption_cards import caption_at
 
 
 class ReelRenderError(RuntimeError):
@@ -65,7 +66,9 @@ def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
                 elapsed = now - cues[selected]["start"]
                 image_number = image_index(elapsed, len(backgrounds[selected]))
                 visual = reframe(backgrounds[selected][image_number], elapsed)
-                frame = caption_frame(visual, cues[selected]["text"])
+                caption = caption_at(cues[selected]["text"], elapsed,
+                                     cues[selected]["end"] - cues[selected]["start"])
+                frame = caption_frame(visual, caption)
                 process.stdin.write(frame.tobytes())
             process.stdin.close()
             errors = process.stderr.read()
@@ -85,6 +88,7 @@ def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
                 "publication_approved": False,
                 "visual_review_required": True,
                 "visual_reframe_interval_seconds": 2.0,
+                "caption_timing": "section_duration_estimate_not_word_aligned",
                 "distinct_source_images": sum(len(group) for group in sections)}
     finally:
         for group in backgrounds:
