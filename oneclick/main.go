@@ -76,9 +76,54 @@ func run(base string)error{
  fmt.Println("Pasta:",root)
  return cmd.Run()
 }
+
+// runReelDraft generates a review-only vertical Reel from a verified input
+// manifest and four supplied images. It never posts content automatically.
+func runReelDraft(base, manifest string, images []string) error {
+ if len(images)!=4 { return fmt.Errorf("modo Reels exige quatro imagens: gancho, contexto, desenvolvimento e revelação") }
+ py,pre,e:=pythonCommand();if e!=nil{return e}
+ root:=os.Getenv("CSTUDIO_ROOT")
+ if root=="" {home,e:=os.UserHomeDir();if e!=nil{return e};root=filepath.Join(home,"Videos","CuriosidadesStudio")}
+ model:=os.Getenv("CSTUDIO_VOICE_MODEL")
+ if model=="" {model=filepath.Join(root,"models","pt_BR-faber-medium.onnx")}
+ piper:=os.Getenv("CSTUDIO_PIPER")
+ if piper=="" {piper="piper"}
+ output:=filepath.Join(root,"reels","reel_revisao.mp4")
+ folder:=filepath.Dir(output)
+ if e=os.MkdirAll(folder,0755);e!=nil{return e}
+ env:=append(os.Environ(),"PYTHONUNBUFFERED=1","PYTHONPATH="+base)
+ narration:=exec.Command(py,append(append([]string{},pre...),"-u","-m","universal_engine.reel_narration",
+  "--input",manifest,"--voice-model",model,"--piper",piper,"--output-dir",folder)...)
+ narration.Dir=base;narration.Env=env;narration.Stdout=os.Stdout;narration.Stderr=os.Stderr
+ fmt.Println("Gerando narração curta e legendas sincronizadas por trecho...")
+ if e=narration.Run();e!=nil{return fmt.Errorf("narração Reels: %w",e)}
+ args:=append(append([]string{},pre...),"-u","-m","universal_engine.reel_render",
+  "--narration-json",filepath.Join(folder,"narracao_e_legendas.json"),"--images")
+ args=append(args,images...)
+ args=append(args,"--output",output)
+ render:=exec.Command(py,args...)
+ render.Dir=base;render.Env=env;render.Stdout=os.Stdout;render.Stderr=os.Stderr
+ fmt.Println("Renderizando Reel vertical para revisão; nenhuma publicação automática...")
+ if e=render.Run();e!=nil{return fmt.Errorf("renderização Reels: %w",e)}
+ fmt.Println("Reel gerado para revisão:",output)
+ fmt.Println("Fontes, direitos das imagens e qualidade artística exigem conferência humana.")
+ return nil
+}
+
 func main(){
  exe,e:=os.Executable();if e!=nil{fmt.Fprintln(os.Stderr,e);os.Exit(1)}
  base:=filepath.Dir(exe)
+ if len(os.Args)>1 && os.Args[1]=="--reels" {
+  if len(os.Args)!=7 {
+   fmt.Fprintln(os.Stderr,"Uso: CuriosidadesStudio.exe --reels roteiro.json gancho.png contexto.png desenvolvimento.png revelacao.png")
+   os.Exit(2)
+  }
+  if err:=runReelDraft(base,os.Args[2],os.Args[3:7]);err!=nil {
+   fmt.Fprintln(os.Stderr,"Reel não gerado:",err)
+   os.Exit(2)
+  }
+  return
+ }
  if len(os.Args)>1 && os.Args[1]=="--verificar-pacote" {
   for _,name:=range []string{"universal_engine/production.py","universal_engine/bootstrap.py","universal_engine/layer_renderer.py","universal_engine/mouth_overlay.py","qa/video_integrity_audit.py"} {
    if _,err:=os.Stat(filepath.Join(base,filepath.FromSlash(name)));err!=nil {
