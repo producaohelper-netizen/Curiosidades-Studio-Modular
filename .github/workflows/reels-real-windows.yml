@@ -121,8 +121,8 @@ jobs:
           if ($duration -lt 25 -or $duration -gt 45) { throw "Duração fora da meta de 25–45s: $duration" }
           # Um stream de audio pode existir mesmo quando a faixa esta muda.
           $volumeLog = (& ffmpeg -hide_banner -nostats -i $video -vn -af volumedetect -f null NUL 2>&1 | Out-String)
-          $meanMatch = [regex]::Match($volumeLog, 'mean_volume:\\s*(-?[0-9]+(?:\\.[0-9]+)?) dB')
-          $maxMatch = [regex]::Match($volumeLog, 'max_volume:\\s*(-?[0-9]+(?:\\.[0-9]+)?) dB')
+          $meanMatch = [regex]::Match($volumeLog, 'mean_volume:\s*(-?[0-9]+(?:\.[0-9]+)?) dB')
+          $maxMatch = [regex]::Match($volumeLog, 'max_volume:\s*(-?[0-9]+(?:\.[0-9]+)?) dB')
           if (-not $meanMatch.Success -or -not $maxMatch.Success) { throw "Nao foi possivel medir a intensidade da narracao: $volumeLog" }
           $meanDb = [double]::Parse($meanMatch.Groups[1].Value,[System.Globalization.CultureInfo]::InvariantCulture)
           $maxDb = [double]::Parse($maxMatch.Groups[1].Value,[System.Globalization.CultureInfo]::InvariantCulture)
