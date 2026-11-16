@@ -101,8 +101,12 @@ def validate_reel(payload: dict) -> dict:
     hosts = set()
     sites = set()
     for source in sources:
-        parsed = urlsplit(source["url"].strip())
-        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        try:
+            parsed = urlsplit(source["url"].strip())
+            hostname = parsed.hostname
+        except ValueError as exc:
+            raise ShortFormError("URL de fonte inválida") from exc
+        if parsed.scheme not in ("http", "https") or not hostname:
             raise ShortFormError("URL de fonte inválida")
         if parsed.username is not None or parsed.password is not None:
             raise ShortFormError("URL de fonte não pode conter credenciais")
@@ -110,7 +114,12 @@ def validate_reel(payload: dict) -> dict:
             parsed.port
         except ValueError as exc:
             raise ShortFormError("Porta inválida na URL de fonte") from exc
-        host = parsed.hostname.lower().rstrip(".").removeprefix("www.")
+        host = hostname.lower().rstrip(".").removeprefix("www.")
+        if any(not label for label in host.split(".")) or any(
+            not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
+            for label in host.split(".")
+        ):
+            raise ShortFormError("Domínio de fonte inválido")
         if host == "localhost" or host.endswith(".localhost") or "." not in host:
             raise ShortFormError("Fonte precisa usar domínio público")
         try:
