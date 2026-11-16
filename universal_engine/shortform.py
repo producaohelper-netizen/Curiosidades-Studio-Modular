@@ -32,6 +32,23 @@ def choose_pillar(counts: dict[str, int]) -> str:
     return max(PILLARS, key=lambda key: ((total + 1) * PILLARS[key] / 100) - counts.get(key, 0))
 
 
+def _site_identity(host: str) -> str:
+    """Conservative registrable-site key for common Brazilian/UK public suffixes.
+
+    This is not a complete public suffix database; manual verification is still
+    required for less common suffixes and independently operated subdomains.
+    """
+    labels = host.lower().strip(".").split(".")
+    multi_suffixes = {
+        "com.br", "org.br", "gov.br", "edu.br", "net.br",
+        "com.uk", "co.uk", "org.uk", "ac.uk", "gov.uk",
+        "com.au", "net.au", "org.au", "co.jp", "com.mx",
+    }
+    suffix = ".".join(labels[-2:])
+    count = 3 if suffix in multi_suffixes else 2
+    return ".".join(labels[-count:]) if len(labels) >= count else host
+
+
 def validate_reel(payload: dict) -> dict:
     if not isinstance(payload, dict):
         raise ShortFormError("Roteiro precisa ser um objeto")
@@ -81,18 +98,20 @@ def validate_reel(payload: dict) -> dict:
     # This is only a structural check: factual verification remains manual.
     publishers = {source["publisher"].strip().casefold() for source in sources}
     hosts = set()
+    sites = set()
     for source in sources:
         parsed = urlsplit(source["url"].strip())
         if parsed.scheme not in ("http", "https") or not parsed.hostname:
             raise ShortFormError("URL de fonte inválida")
         host = parsed.hostname.lower().removeprefix("www.")
         hosts.add(host)
+        sites.add(_site_identity(host))
     # A subdomain is not independent of its parent site (e.g. news.example.org
     # and example.org). This is conservative; manual publisher checks still apply.
     if any(a == b or a.endswith("." + b) or b.endswith("." + a)
            for index, a in enumerate(hosts) for b in list(hosts)[index + 1:]):
         raise ShortFormError("Use pelo menos duas fontes de sites diferentes")
-    if len(publishers) < 2 or len(hosts) < 2:
+    if len(publishers) < 2 or len(sites) < 2:
         raise ShortFormError("Use pelo menos duas fontes de responsáveis e sites diferentes")
     return {
         "brand": BRAND, "pillar": pillar, "target_seconds": duration,
