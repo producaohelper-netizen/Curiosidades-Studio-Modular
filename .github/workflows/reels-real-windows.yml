@@ -40,6 +40,8 @@ jobs:
           if ((Get-Item voice/pt_BR-faber-medium.onnx).Length -lt 30000000) { throw 'Modelo incompleto' }
       - name: Testar contrato editorial e fontes independentes
         run: python -m unittest discover -s tests -p test_shortform.py -v
+      - name: Testar manifesto de direitos e bloqueio de renderização
+        run: python -m unittest discover -s tests -p test_reel_asset_manifest.py -v
       - name: Compilar executável Windows
         shell: pwsh
         run: |
