@@ -107,13 +107,16 @@ def main():
     args = ap.parse_args()
     try:
         data = json.loads(Path(args.narration_json).read_text(encoding="utf8"))
+        # Validate declared image rights before expensive rendering. An invalid
+        # manifest must not leave behind a new MP4 that looks ready for review.
+        asset_rights = (load_asset_manifest(args.license_manifest, args.images)
+                        if args.license_manifest else {
+                            "rights_declarations_present": False,
+                            "rights_independently_verified": False,
+                            "publication_approved": False})
         result = render_reel(data["audio_path"], data["reel_caption_cues"],
                              args.images, args.output, ffmpeg=args.ffmpeg)
-        result["asset_rights"] = (load_asset_manifest(args.license_manifest, args.images)
-                                  if args.license_manifest else {
-                                      "rights_declarations_present": False,
-                                      "rights_independently_verified": False,
-                                      "publication_approved": False})
+        result["asset_rights"] = asset_rights
         report = Path(args.output).with_suffix(".review.json")
         report.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf8")
     except (OSError, ValueError, KeyError, ReelRenderError, AssetRightsError) as exc:
