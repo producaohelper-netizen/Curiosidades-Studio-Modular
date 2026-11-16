@@ -16,7 +16,7 @@ import (
 
 func pythonCommand() (string, []string, error) {
  if p:=os.Getenv("CSTUDIO_PYTHON");p!="" { return p,nil,nil }
- for _,candidate:=range [][]string{{"py","-3"},{"python"},{"python3"}} {
+ for _,candidate:=range [][]string{{"python"},{"py","-3"},{"python3"}} {
   p,e:=exec.LookPath(candidate[0]);if e!=nil{continue}
   pre:=candidate[1:]
   args:=append(append([]string{},pre...),"-c","import sys;print(sys.version_info.major)")
@@ -82,6 +82,8 @@ func run(base string)error{
 func runReelDraft(base, manifest string, images []string) error {
  if len(images)!=4 { return fmt.Errorf("modo Reels exige quatro imagens: gancho, contexto, desenvolvimento e revelação") }
  py,pre,e:=pythonCommand();if e!=nil{return e}
+ checkArgs:=append(append([]string{},pre...),"-c","import PIL; print(PIL.__version__)")
+ if err:=exec.Command(py,checkArgs...).Run();err!=nil {return fmt.Errorf("Python selecionado sem Pillow; execute %s -m pip install Pillow: %w",py,err)}
  root:=os.Getenv("CSTUDIO_ROOT")
  if root=="" {home,e:=os.UserHomeDir();if e!=nil{return e};root=filepath.Join(home,"Videos","CuriosidadesStudio")}
  model:=os.Getenv("CSTUDIO_VOICE_MODEL")
