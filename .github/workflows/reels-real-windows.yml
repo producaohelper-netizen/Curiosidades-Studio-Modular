@@ -91,6 +91,32 @@ jobs:
           print(report)
           '@ | Set-Content -Encoding utf8 reel_real_check.py
           python reel_real_check.py
+      - name: Teste end-to-end pelo executável Windows em 1080x1920 24fps
+        shell: pwsh
+        run: |
+          $env:CSTUDIO_ROOT = (Join-Path (Get-Location) 'reel_test/full_exe')
+          $env:CSTUDIO_VOICE_MODEL = (Join-Path (Get-Location) 'voice/pt_BR-faber-medium.onnx')
+          $env:CSTUDIO_PIPER = 'piper'
+          $script = (Resolve-Path 'reel_test/roteiro.json').Path
+          $images = @(0..3 | ForEach-Object { (Resolve-Path "reel_test/visual_$_.png").Path })
+          & .\\CuriosidadesStudio_Windows_Reels_CANDIDATO.exe --reels $script $images[0] $images[1] $images[2] $images[3]
+          if ($LASTEXITCODE -ne 0) { throw "Executável falhou no fluxo completo: $LASTEXITCODE" }
+          $video = Join-Path $env:CSTUDIO_ROOT 'reels/reel_revisao.mp4'
+          if (-not (Test-Path $video)) { throw 'MP4 final ausente' }
+          $probe = & ffprobe -v error -show_entries 'format=duration:stream=codec_type,width,height,r_frame_rate' -of json $video | ConvertFrom-Json
+          $v = @($probe.streams | Where-Object { $_.codec_type -eq 'video' })[0]
+          $a = @($probe.streams | Where-Object { $_.codec_type -eq 'audio' })[0]
+          if ($null -eq $v -or $null -eq $a) { throw 'Áudio ou vídeo ausente' }
+          if ($v.width -ne 1080 -or $v.height -ne 1920 -or $v.r_frame_rate -ne '24/1') { throw "Formato incorreto: $($v.width)x$($v.height) $($v.r_frame_rate)" }
+          $duration = [double]::Parse($probe.format.duration,[System.Globalization.CultureInfo]::InvariantCulture)
+          if ($duration -lt 25 -or $duration -gt 45) { throw "Duração fora da meta de 25–45s: $duration" }
+          Write-Host "EXE end-to-end aprovado: 1080x1920 24fps, Piper, áudio AAC, duração $duration segundos"
+      - name: Registrar resultado do teste completo
+        if: always()
+        shell: pwsh
+        run: |
+          $report = 'reel_test/full_exe/reels/reel_revisao.review.json'
+          if (Test-Path $report) { Get-Content $report }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -99,4 +125,5 @@ jobs:
             CuriosidadesStudio_Windows_Reels_CANDIDATO.exe
             reel_test/output/reel_real_piper.mp4
             reel_test/output/verification.json
+            reel_test/full_exe/reels/reel_revisao.review.json
           retention-days: 7
