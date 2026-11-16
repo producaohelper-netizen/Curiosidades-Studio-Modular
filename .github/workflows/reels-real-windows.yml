@@ -119,7 +119,15 @@ jobs:
           if ($v.width -ne 1080 -or $v.height -ne 1920 -or $v.r_frame_rate -ne '24/1') { throw "Formato incorreto: $($v.width)x$($v.height) $($v.r_frame_rate)" }
           $duration = [double]::Parse($probe.format.duration,[System.Globalization.CultureInfo]::InvariantCulture)
           if ($duration -lt 25 -or $duration -gt 45) { throw "Duração fora da meta de 25–45s: $duration" }
-          Write-Host "EXE end-to-end aprovado: 1080x1920 24fps, Piper, áudio AAC, duração $duration segundos"
+          # Um stream de audio pode existir mesmo quando a faixa esta muda.
+          $volumeLog = (& ffmpeg -hide_banner -nostats -i $video -vn -af volumedetect -f null NUL 2>&1 | Out-String)
+          $meanMatch = [regex]::Match($volumeLog, 'mean_volume:\\s*(-?[0-9]+(?:\\.[0-9]+)?) dB')
+          $maxMatch = [regex]::Match($volumeLog, 'max_volume:\\s*(-?[0-9]+(?:\\.[0-9]+)?) dB')
+          if (-not $meanMatch.Success -or -not $maxMatch.Success) { throw "Nao foi possivel medir a intensidade da narracao: $volumeLog" }
+          $meanDb = [double]::Parse($meanMatch.Groups[1].Value,[System.Globalization.CultureInfo]::InvariantCulture)
+          $maxDb = [double]::Parse($maxMatch.Groups[1].Value,[System.Globalization.CultureInfo]::InvariantCulture)
+          if ($meanDb -lt -45 -or $maxDb -lt -25) { throw "Audio possivelmente mudo: media $meanDb dBFS, pico $maxDb dBFS" }
+          Write-Host "EXE end-to-end aprovado: 1080x1920 24fps, Piper, audio com media $meanDb dBFS e pico $maxDb dBFS, duracao $duration segundos"
       - name: Registrar resultado do teste completo
         if: always()
         shell: pwsh
