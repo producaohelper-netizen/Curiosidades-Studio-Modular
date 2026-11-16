@@ -1,5 +1,10 @@
 import unittest
-from universal_engine.reel_render import render_reel, ReelRenderError
+import json
+import sys
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+from universal_engine.reel_render import render_reel, ReelRenderError, main
 
 
 class ReelRenderTests(unittest.TestCase):
@@ -12,6 +17,27 @@ class ReelRenderTests(unittest.TestCase):
         with self.assertRaisesRegex(ReelRenderError, "vertical"):
             render_reel("missing.wav", [{"start": 0, "end": 1, "text": "A"}],
                         ["missing.png"], "unused.mp4", size=(1920, 1080))
+
+
+    def test_invalid_license_manifest_blocks_render_before_mp4(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            script = root / "narration.json"
+            script.write_text(json.dumps({"audio_path": "not-needed.wav",
+                                          "reel_caption_cues": []}), encoding="utf8")
+            rights = root / "rights.json"
+            rights.write_text(json.dumps({"assets": []}), encoding="utf8")
+            output = root / "reel.mp4"
+            argv = ["reel_render", "--narration-json", str(script), "--images",
+                    "a.png", "b.png", "c.png", "d.png",
+                    "--license-manifest", str(rights), "--output", str(output)]
+            with patch.object(sys, "argv", argv), patch(
+                    "universal_engine.reel_render.render_reel") as renderer:
+                with self.assertRaises(SystemExit) as error:
+                    main()
+                self.assertEqual(error.exception.code, 2)
+                renderer.assert_not_called()
+                self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":
