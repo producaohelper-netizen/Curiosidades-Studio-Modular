@@ -87,6 +87,11 @@ def validate_reel(payload: dict) -> dict:
             raise ShortFormError("URL de fonte inválida")
         host = parsed.hostname.lower().removeprefix("www.")
         hosts.add(host)
+    # A subdomain is not independent of its parent site (e.g. news.example.org
+    # and example.org). This is conservative; manual publisher checks still apply.
+    if any(a == b or a.endswith("." + b) or b.endswith("." + a)
+           for index, a in enumerate(hosts) for b in list(hosts)[index + 1:]):
+        raise ShortFormError("Use pelo menos duas fontes de sites diferentes")
     if len(publishers) < 2 or len(hosts) < 2:
         raise ShortFormError("Use pelo menos duas fontes de responsáveis e sites diferentes")
     return {
