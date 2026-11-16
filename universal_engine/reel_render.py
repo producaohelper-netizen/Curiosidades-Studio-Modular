@@ -13,6 +13,7 @@ from pathlib import Path
 from PIL import Image
 from .reel_captions import caption_frame
 from .reel_caption_timing import validate_cues
+from .reel_visual_beats import reframe
 
 
 class ReelRenderError(RuntimeError):
@@ -55,7 +56,8 @@ def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
                 now = frame_index / fps
                 selected = next((i for i, cue in enumerate(cues)
                                  if cue["start"] <= now < cue["end"]), len(cues)-1)
-                frame = caption_frame(backgrounds[selected], cues[selected]["text"])
+                visual = reframe(backgrounds[selected], now - cues[selected]["start"])
+                frame = caption_frame(visual, cues[selected]["text"])
                 process.stdin.write(frame.tobytes())
             process.stdin.close()
             errors = process.stderr.read()
@@ -73,7 +75,9 @@ def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
         return {"output": str(destination), "duration": duration,
                 "resolution": list(size), "fps": fps,
                 "publication_approved": False,
-                "visual_review_required": True}
+                "visual_review_required": True,
+                "visual_reframe_interval_seconds": 2.0,
+                "distinct_source_images": len(images)}
     finally:
         for background in backgrounds:
             background.close()
