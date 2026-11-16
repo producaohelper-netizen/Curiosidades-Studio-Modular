@@ -82,6 +82,30 @@ class ShortFormTests(unittest.TestCase):
         with self.assertRaises(ShortFormError):
             validate_reel(data)
 
+    def test_localhost_source_rejected(self):
+        data = example()
+        data["sources"][1]["url"] = "http://localhost/article"
+        with self.assertRaises(ShortFormError):
+            validate_reel(data)
+
+    def test_ip_source_rejected(self):
+        data = example()
+        data["sources"][1]["url"] = "https://127.0.0.1/article"
+        with self.assertRaises(ShortFormError):
+            validate_reel(data)
+
+    def test_embedded_credentials_rejected(self):
+        data = example()
+        data["sources"][1]["url"] = "https://user:password@example.net/article"
+        with self.assertRaises(ShortFormError):
+            validate_reel(data)
+
+    def test_invalid_port_rejected(self):
+        data = example()
+        data["sources"][1]["url"] = "https://example.net:invalid/article"
+        with self.assertRaises(ShortFormError):
+            validate_reel(data)
+
     def test_missing_reveal_rejected(self):
         data = example()
         data["sections"]["reveal"] = ""
