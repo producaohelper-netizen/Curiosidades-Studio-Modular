@@ -103,6 +103,11 @@ func runReelDraft(base, manifest string, images []string) error {
   "--narration-json",filepath.Join(folder,"narracao_e_legendas.json"),"--images")
  args=append(args,images...)
  args=append(args,"--output",output)
+ // Optional rights manifest is forwarded to the renderer so invalid declarations
+ // stop the EXE before MP4 creation. Human license review remains mandatory.
+ if rights:=os.Getenv("CSTUDIO_ASSET_MANIFEST");rights!="" {
+  args=append(args,"--license-manifest",rights)
+ }
  render:=exec.Command(py,args...)
  render.Dir=base;render.Env=env;render.Stdout=os.Stdout;render.Stderr=os.Stderr
  fmt.Println("Renderizando Reel vertical para revisão; nenhuma publicação automática...")
