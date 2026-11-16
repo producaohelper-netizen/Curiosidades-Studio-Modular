@@ -5,7 +5,9 @@ must inspect the original source, license version and attribution before use.
 """
 from __future__ import annotations
 
+import ipaddress
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -40,9 +42,26 @@ def validate_asset_manifest(manifest: dict, image_paths: list[str]) -> dict:
             raise AssetRightsError("Autoria obrigatória")
         if not isinstance(source, str) or not source.strip():
             raise AssetRightsError("Origem da imagem obrigatória")
-        parsed = urlsplit(source)
-        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+        try:
+            parsed = urlsplit(source)
+            hostname = parsed.hostname
+            port = parsed.port
+        except ValueError as exc:
+            raise AssetRightsError("URL de origem malformada") from exc
+        if (parsed.scheme != "https" or not hostname or parsed.username or parsed.password
+                or port not in (None, 443) or parsed.fragment):
             raise AssetRightsError("Origem deve ser uma URL HTTPS pública sem credenciais")
+        try:
+            ipaddress.ip_address(hostname)
+        except ValueError:
+            pass
+        else:
+            raise AssetRightsError("Endereço IP não é uma fonte pública de direitos verificável")
+        if (hostname == "localhost" or "." not in hostname
+                or len(hostname) > 253
+                or any(not re.fullmatch(r"[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?", label)
+                       for label in hostname.split("."))):
+            raise AssetRightsError("Domínio de origem inválido")
         actual.append(filename)
     if len(set(actual)) != len(actual) or actual != expected:
         raise AssetRightsError("Imagens e manifesto não correspondem na mesma ordem")
