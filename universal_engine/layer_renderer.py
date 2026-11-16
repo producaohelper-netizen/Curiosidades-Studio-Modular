@@ -18,6 +18,7 @@ from .mouth_overlay import compose_mouth
 from .effects import paint_effect,paint_reaction
 from .deformation import organic_sway, organic_swim
 from .environment_motion import draw_environment
+from .reel_captions import caption_frame
 
 class RenderError(RuntimeError):
     pass
@@ -145,7 +146,12 @@ def render_frame(scene:dict, time_sec:float, background:Image.Image,
                             radius=17,fill=(15,32,53,a),
                             outline=(232,242,250,min(160,a)),width=2)
         d.text((x,y),words,font=font,fill=(255,255,255,min(255,a+40)))
-    return apply_camera(canvas.convert("RGB"),scene,time_sec,poses)
+    frame = apply_camera(canvas.convert("RGB"),scene,time_sec,poses)
+    # Optional short-form subtitle; long-form scenes remain unchanged.
+    caption = scene.get("reel_caption")
+    if caption:
+        frame = caption_frame(frame, caption)
+    return frame
 
 def audio_duration(path:str|Path) -> float:
     """PCM WAV only, preserving exact recorded speech duration."""
