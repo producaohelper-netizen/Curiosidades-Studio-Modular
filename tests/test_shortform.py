@@ -106,6 +106,24 @@ class ShortFormTests(unittest.TestCase):
         with self.assertRaises(ShortFormError):
             validate_reel(data)
 
+    def test_malformed_ipv6_source_rejected_with_editorial_error(self):
+        data = example()
+        data["sources"][1]["url"] = "https://[broken/article"
+        with self.assertRaises(ShortFormError):
+            validate_reel(data)
+
+    def test_empty_dns_label_source_rejected(self):
+        data = example()
+        data["sources"][1]["url"] = "https://news..example.net/article"
+        with self.assertRaisesRegex(ShortFormError, "Domínio"):
+            validate_reel(data)
+
+    def test_invalid_dns_label_source_rejected(self):
+        data = example()
+        data["sources"][1]["url"] = "https://bad_label.example.net/article"
+        with self.assertRaisesRegex(ShortFormError, "Domínio"):
+            validate_reel(data)
+
     def test_missing_reveal_rejected(self):
         data = example()
         data["sections"]["reveal"] = ""
