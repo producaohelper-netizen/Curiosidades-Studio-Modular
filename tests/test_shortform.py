@@ -50,6 +50,26 @@ class ShortFormTests(unittest.TestCase):
         with self.assertRaisesRegex(ShortFormError, "sites diferentes"):
             validate_reel(data)
 
+    def test_sibling_subdomains_of_same_brazilian_site_rejected(self):
+        data = example()
+        data["sources"][0]["url"] = "https://news.example.com.br/a"
+        data["sources"][1]["url"] = "https://blog.example.com.br/b"
+        with self.assertRaisesRegex(ShortFormError, "sites diferentes"):
+            validate_reel(data)
+
+    def test_sibling_subdomains_of_same_uk_site_rejected(self):
+        data = example()
+        data["sources"][0]["url"] = "https://news.example.co.uk/a"
+        data["sources"][1]["url"] = "https://blog.example.co.uk/b"
+        with self.assertRaisesRegex(ShortFormError, "sites diferentes"):
+            validate_reel(data)
+
+    def test_distinct_brazilian_sites_accepted(self):
+        data = example()
+        data["sources"][0]["url"] = "https://news.example.com.br/a"
+        data["sources"][1]["url"] = "https://blog.other.com.br/b"
+        self.assertFalse(validate_reel(data)["publication_approved"])
+
     def test_same_publisher_is_not_independent_evidence(self):
         data = example()
         data["sources"][1]["publisher"] = "arquivo a"
