@@ -16,6 +16,7 @@ from .reel_caption_timing import validate_cues
 from .reel_visual_beats import reframe
 from .reel_visual_sequence import normalize_images, image_index
 from .reel_caption_cards import caption_at
+from .reel_asset_manifest import load_asset_manifest, AssetRightsError
 
 
 class ReelRenderError(RuntimeError):
@@ -102,14 +103,20 @@ def main():
     ap.add_argument("--images", nargs=4, required=True, metavar="IMAGE")
     ap.add_argument("--output", required=True)
     ap.add_argument("--ffmpeg", default="ffmpeg")
+    ap.add_argument("--license-manifest", help="JSON de autoria e licenças por imagem (não substitui revisão)")
     args = ap.parse_args()
     try:
         data = json.loads(Path(args.narration_json).read_text(encoding="utf8"))
         result = render_reel(data["audio_path"], data["reel_caption_cues"],
                              args.images, args.output, ffmpeg=args.ffmpeg)
+        result["asset_rights"] = (load_asset_manifest(args.license_manifest, args.images)
+                                  if args.license_manifest else {
+                                      "rights_declarations_present": False,
+                                      "rights_independently_verified": False,
+                                      "publication_approved": False})
         report = Path(args.output).with_suffix(".review.json")
         report.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf8")
-    except (OSError, ValueError, KeyError, ReelRenderError) as exc:
+    except (OSError, ValueError, KeyError, ReelRenderError, AssetRightsError) as exc:
         ap.exit(2, "Falha ao renderizar Reel: " + str(exc) + "\n")
     print("MP4 vertical criado para revisão, não aprovado para publicação.")
 
