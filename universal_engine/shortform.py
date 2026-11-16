@@ -6,6 +6,7 @@ No unverified script is authorized for publication.
 from __future__ import annotations
 from dataclasses import dataclass
 import re
+from urllib.parse import urlsplit
 
 PILLARS = {
     "historia_real": 35,
@@ -76,6 +77,18 @@ def validate_reel(payload: dict) -> dict:
             raise ShortFormError("Fonte deve possuir URL HTTP(S)")
     if len({s["url"].strip().lower() for s in sources}) < 2:
         raise ShortFormError("Fontes duplicadas")
+    # Two URLs from the same publisher or host are not independent evidence.
+    # This is only a structural check: factual verification remains manual.
+    publishers = {source["publisher"].strip().casefold() for source in sources}
+    hosts = set()
+    for source in sources:
+        parsed = urlsplit(source["url"].strip())
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            raise ShortFormError("URL de fonte inválida")
+        host = parsed.hostname.lower().removeprefix("www.")
+        hosts.add(host)
+    if len(publishers) < 2 or len(hosts) < 2:
+        raise ShortFormError("Use pelo menos duas fontes de responsáveis e sites diferentes")
     return {
         "brand": BRAND, "pillar": pillar, "target_seconds": duration,
         "word_count": words, "narration": " ".join(sections[k].strip() for k in keys),
