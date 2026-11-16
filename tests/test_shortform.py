@@ -44,6 +44,12 @@ class ShortFormTests(unittest.TestCase):
         with self.assertRaisesRegex(ShortFormError, "sites diferentes"):
             validate_reel(data)
 
+    def test_subdomain_does_not_count_as_independent_site(self):
+        data = example()
+        data["sources"][1]["url"] = "https://news.example.org/article"
+        with self.assertRaisesRegex(ShortFormError, "sites diferentes"):
+            validate_reel(data)
+
     def test_same_publisher_is_not_independent_evidence(self):
         data = example()
         data["sources"][1]["publisher"] = "arquivo a"
