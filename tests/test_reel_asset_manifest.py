@@ -32,6 +32,31 @@ class AssetManifestTests(unittest.TestCase):
         with self.assertRaises(AssetRightsError):
             validate_asset_manifest(data, ["gancho.png", "contexto.png"])
 
+    def test_malformed_and_private_origins_rejected(self):
+        bad_sources = [
+            "https://[::1",
+            "https://127.0.0.1/image.png",
+            "https://[2001:db8::1]/image.png",
+            "https://localhost/image.png",
+            "https://internal/image.png",
+            "https://-invalid.example/image.png",
+            "https://valid.example:8443/image.png",
+            "https://valid.example/image.png#fragment",
+        ]
+        for source in bad_sources:
+            with self.subTest(source=source):
+                data = manifest()
+                data["assets"][0]["source_url"] = source
+                with self.assertRaises(AssetRightsError):
+                    validate_asset_manifest(data, ["gancho.png", "contexto.png"])
+
+    def test_public_https_origin_accepted_without_auto_approval(self):
+        data = manifest()
+        data["assets"][0]["source_url"] = "https://commons.wikimedia.org/wiki/File:Example.png"
+        result = validate_asset_manifest(data, ["gancho.png", "contexto.png"])
+        self.assertFalse(result["rights_independently_verified"])
+        self.assertFalse(result["publication_approved"])
+
     def test_untrusted_origin_rejected(self):
         data = manifest()
         data["assets"][0]["source_url"] = "file:///private/image.png"
