@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 from urllib.parse import urlsplit
+import ipaddress
 
 PILLARS = {
     "historia_real": 35,
@@ -103,7 +104,21 @@ def validate_reel(payload: dict) -> dict:
         parsed = urlsplit(source["url"].strip())
         if parsed.scheme not in ("http", "https") or not parsed.hostname:
             raise ShortFormError("URL de fonte inválida")
-        host = parsed.hostname.lower().removeprefix("www.")
+        if parsed.username is not None or parsed.password is not None:
+            raise ShortFormError("URL de fonte não pode conter credenciais")
+        try:
+            parsed.port
+        except ValueError as exc:
+            raise ShortFormError("Porta inválida na URL de fonte") from exc
+        host = parsed.hostname.lower().rstrip(".").removeprefix("www.")
+        if host == "localhost" or host.endswith(".localhost") or "." not in host:
+            raise ShortFormError("Fonte precisa usar domínio público")
+        try:
+            ipaddress.ip_address(host.strip("[]"))
+        except ValueError:
+            pass
+        else:
+            raise ShortFormError("Fonte precisa usar domínio público, não endereço IP")
         hosts.add(host)
         sites.add(_site_identity(host))
     # A subdomain is not independent of its parent site (e.g. news.example.org
