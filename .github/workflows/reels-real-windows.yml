@@ -7,6 +7,7 @@ on:
       - 'universal_engine/reel_*.py'
       - 'universal_engine/shortform.py'
       - 'tests/test_reel*.py'
+      - 'tests/test_shortform.py'
       - '.github/workflows/reels-real-windows.yml'
 jobs:
   windows_real_piper_mp4:
@@ -37,6 +38,8 @@ jobs:
           Invoke-WebRequest "$base/pt_BR-faber-medium.onnx" -OutFile voice/pt_BR-faber-medium.onnx
           Invoke-WebRequest "$base/pt_BR-faber-medium.onnx.json" -OutFile voice/pt_BR-faber-medium.onnx.json
           if ((Get-Item voice/pt_BR-faber-medium.onnx).Length -lt 30000000) { throw 'Modelo incompleto' }
+      - name: Testar contrato editorial e fontes independentes
+        run: python -m unittest discover -s tests -p test_shortform.py -v
       - name: Compilar executável Windows
         shell: pwsh
         run: |
