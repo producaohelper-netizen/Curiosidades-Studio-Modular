@@ -38,6 +38,24 @@ class ShortFormTests(unittest.TestCase):
         with self.assertRaises(ShortFormError):
             validate_reel(data)
 
+    def test_same_site_is_not_independent_evidence(self):
+        data = example()
+        data["sources"][1]["url"] = "https://www.example.org/other"
+        with self.assertRaisesRegex(ShortFormError, "sites diferentes"):
+            validate_reel(data)
+
+    def test_same_publisher_is_not_independent_evidence(self):
+        data = example()
+        data["sources"][1]["publisher"] = "arquivo a"
+        with self.assertRaisesRegex(ShortFormError, "responsáveis"):
+            validate_reel(data)
+
+    def test_invalid_source_hostname_rejected(self):
+        data = example()
+        data["sources"][1]["url"] = "https://"
+        with self.assertRaises(ShortFormError):
+            validate_reel(data)
+
     def test_missing_reveal_rejected(self):
         data = example()
         data["sections"]["reveal"] = ""
