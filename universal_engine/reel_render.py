@@ -23,6 +23,19 @@ class ReelRenderError(RuntimeError):
     pass
 
 
+
+def visual_section_at(cues, time_sec):
+    """Keep the previous visual during silence, including before the first cue."""
+    if not cues:
+        raise ValueError("At least one narration cue is required")
+    for index, cue in enumerate(cues):
+        if time_sec < cue["start"]:
+            return max(0, index - 1)
+        if time_sec < cue["end"]:
+            return index
+    return len(cues) - 1
+
+
 def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
                 ffmpeg="ffmpeg"):
     try:
@@ -62,13 +75,7 @@ def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
         try:
             for frame_index in range(math.ceil(duration * fps)):
                 now = frame_index / fps
-                selected = next((i for i, cue in enumerate(cues)
-                                 if cue["start"] <= now < cue["end"]), None)
-                if selected is None:
-                    # During a narration gap, retain the preceding visual instead
-                    # of jumping to the final section or using negative elapsed time.
-                    selected = max(0, next((i for i in range(len(cues) - 1, -1, -1)
-                                            if cues[i]["end"] <= now), 0))
+                selected = visual_section_at(cues, now)
                 elapsed = max(0.0, now - cues[selected]["start"])
                 image_number = image_index(elapsed, len(backgrounds[selected]))
                 visual = reframe(backgrounds[selected][image_number], elapsed)
