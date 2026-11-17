@@ -135,6 +135,29 @@ jobs:
           $maxDb = [double]::Parse($maxMatch.Groups[1].Value,[System.Globalization.CultureInfo]::InvariantCulture)
           if ($meanDb -lt -45 -or $maxDb -lt -25) { throw "Audio possivelmente mudo: media $meanDb dBFS, pico $maxDb dBFS" }
           Write-Host "EXE end-to-end aprovado: 1080x1920 24fps, Piper, audio com media $meanDb dBFS e pico $maxDb dBFS, duracao $duration segundos"
+      - name: Decodificar MP4 completo e conferir duracao dos streams
+        shell: pwsh
+        run: |
+          $video = 'reel_test/full_exe/reels/reel_revisao.mp4'
+          if (-not (Test-Path $video)) { throw 'MP4 ausente para decodificacao' }
+          & ffmpeg -hide_banner -v error -xerror -i $video -map 0:v:0 -f null NUL
+          if ($LASTEXITCODE -ne 0) { throw 'Falha na decodificacao integral do video' }
+          & ffmpeg -hide_banner -v error -xerror -i $video -map 0:a:0 -f null NUL
+          if ($LASTEXITCODE -ne 0) { throw 'Falha na decodificacao integral do audio' }
+          $probe = & ffprobe -v error -show_entries 'format=duration:stream=codec_type,duration,nb_frames' -of json $video | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'ffprobe falhou' }
+          $v = @($probe.streams | Where-Object { $_.codec_type -eq 'video' })[0]
+          $a = @($probe.streams | Where-Object { $_.codec_type -eq 'audio' })[0]
+          $duration = [double]::Parse($probe.format.duration,[System.Globalization.CultureInfo]::InvariantCulture)
+          if ($v.nb_frames -and $v.nb_frames -ne 'N/A') {
+            $frames = [int]$v.nb_frames
+            if ([math]::Abs($frames - 24*$duration) -gt 48) { throw "Contagem de frames incoerente: $frames em $duration s" }
+          }
+          if ($a.duration -and $a.duration -ne 'N/A') {
+            $audioDuration = [double]::Parse($a.duration,[System.Globalization.CultureInfo]::InvariantCulture)
+            if ([math]::Abs($audioDuration - $duration) -gt 1.0) { throw "Audio e video dessincronizados em duracao: $audioDuration vs $duration" }
+          }
+          Write-Host 'MP4 decodificado integralmente, com duracoes coerentes'
       - name: Registrar resultado do teste completo
         if: always()
         shell: pwsh
