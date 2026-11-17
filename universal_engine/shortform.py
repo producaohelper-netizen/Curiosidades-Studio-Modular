@@ -25,9 +25,11 @@ class ShortFormError(ValueError):
 
 def choose_pillar(counts: dict[str, int]) -> str:
     """Pick the largest deficit against the 30-day editorial mix."""
+    if not isinstance(counts, dict):
+        raise ShortFormError("Contagens precisam ser um objeto")
     if any(k not in PILLARS for k in counts):
         raise ShortFormError("Pilar desconhecido")
-    if any(not isinstance(v, int) or v < 0 for v in counts.values()):
+    if any(type(v) is not int or v < 0 for v in counts.values()):
         raise ShortFormError("Contagem inválida")
     total = sum(counts.values())
     return max(PILLARS, key=lambda key: ((total + 1) * PILLARS[key] / 100) - counts.get(key, 0))
@@ -54,7 +56,7 @@ def validate_reel(payload: dict) -> dict:
     if not isinstance(payload, dict):
         raise ShortFormError("Roteiro precisa ser um objeto")
     pillar = payload.get("pillar")
-    if pillar not in PILLARS:
+    if not isinstance(pillar, str) or pillar not in PILLARS:
         raise ShortFormError("Pilar editorial inválido")
     duration = payload.get("target_seconds")
     if duration not in TARGET_DURATIONS:
