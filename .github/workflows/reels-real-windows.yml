@@ -43,6 +43,13 @@ jobs:
         run: python -m unittest discover -s tests -p test_shortform.py -v
       - name: Testar manifesto de direitos e bloqueio de renderização
         run: python -m unittest discover -s tests -p test_reel_asset_manifest.py -v
+      - name: Testar regressões de legendas, cortes e seleção visual
+        run: |
+          python -m unittest discover -s tests -p test_reel_caption_timing.py -v
+          python -m unittest discover -s tests -p test_reel_visual_sequence.py -v
+          python -m unittest discover -s tests -p test_reel_visual_beats.py -v
+          python -m unittest discover -s tests -p test_reel_source_url_safety.py -v
+          python -m unittest discover -s tests -p test_reel_render.py -v
       - name: Compilar executável Windows
         shell: pwsh
         run: |
