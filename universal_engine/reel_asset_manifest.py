@@ -36,7 +36,7 @@ def validate_asset_manifest(manifest: dict, image_paths: list[str]) -> dict:
         source = asset.get("source_url")
         if not isinstance(filename, str) or not filename or Path(filename).name != filename:
             raise AssetRightsError("Nome de imagem inválido")
-        if license_id not in ALLOWED_LICENSES:
+        if not isinstance(license_id, str) or license_id not in ALLOWED_LICENSES:
             raise AssetRightsError("Licença não suportada ou ausente")
         if not isinstance(author, str) or not author.strip():
             raise AssetRightsError("Autoria obrigatória")
