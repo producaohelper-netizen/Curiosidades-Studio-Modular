@@ -17,7 +17,7 @@ def sample():
         "claims": [{"text": "A cidade foi transferida", "status": "verified"}],
         "sources": [
             {"title": "A", "publisher": "Arquivo A", "url": "https://example.org/a"},
-            {"title": "B", "publisher": "Arquivo B", "url": "https://example.org/b"},
+            {"title": "B", "publisher": "Arquivo B", "url": "https://example.net/b"},
         ],
     }
 
