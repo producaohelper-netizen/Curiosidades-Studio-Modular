@@ -4,10 +4,29 @@ import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
-from universal_engine.reel_render import render_reel, ReelRenderError, main
+from universal_engine.reel_render import render_reel, ReelRenderError, main, visual_section_at
 
 
 class ReelRenderTests(unittest.TestCase):
+    def test_visual_selection_retains_previous_section_during_silence(self):
+        cues = [
+            {"start": 0.5, "end": 1.5, "text": "A"},
+            {"start": 2.0, "end": 3.0, "text": "B"},
+            {"start": 3.5, "end": 4.0, "text": "C"},
+        ]
+        self.assertEqual(visual_section_at(cues, 0.0), 0)
+        self.assertEqual(visual_section_at(cues, 0.7), 0)
+        self.assertEqual(visual_section_at(cues, 1.5), 0)
+        self.assertEqual(visual_section_at(cues, 1.99), 0)
+        self.assertEqual(visual_section_at(cues, 2.0), 1)
+        self.assertEqual(visual_section_at(cues, 3.25), 1)
+        self.assertEqual(visual_section_at(cues, 3.5), 2)
+        self.assertEqual(visual_section_at(cues, 4.5), 2)
+
+    def test_visual_selection_rejects_empty_cues(self):
+        with self.assertRaises(ValueError):
+            visual_section_at([], 0.0)
+
     def test_requires_exact_visual_for_each_narrated_section(self):
         with self.assertRaisesRegex(ReelRenderError, "imagem por trecho"):
             render_reel("missing.wav", [{"start": 0, "end": 1, "text": "A"}],
