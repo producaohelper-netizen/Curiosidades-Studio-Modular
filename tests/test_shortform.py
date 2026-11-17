@@ -26,6 +26,20 @@ class ShortFormTests(unittest.TestCase):
     def test_rotation_compensates_overrepresented_history(self):
         self.assertNotEqual(choose_pillar({"historia_real": 10}), "historia_real")
 
+    def test_invalid_rotation_counts_rejected(self):
+        for counts in (None, [], {"historia_real": True}, {"historia_real": 1.5},
+                       {"historia_real": -1}):
+            with self.subTest(counts=counts), self.assertRaises(ShortFormError):
+                choose_pillar(counts)
+
+    def test_malformed_pillar_rejected_without_type_error(self):
+        for pillar in ([], {}, None, 1):
+            with self.subTest(pillar=pillar):
+                data = example()
+                data["pillar"] = pillar
+                with self.assertRaises(ShortFormError):
+                    validate_reel(data)
+
     def test_reel_contract_uses_vertical_video_and_requires_review(self):
         result = validate_reel(example())
         self.assertEqual((result["format"]["width"], result["format"]["height"]), (1080, 1920))
