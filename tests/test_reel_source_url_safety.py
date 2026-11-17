@@ -19,10 +19,10 @@ class EditorialSourceUrlTests(unittest.TestCase):
     def test_rejects_invalid_whitespace_and_control_characters(self):
         for url in (
             "https://example.com/with space",
-            "https://example.com/with\\tTab",
-            "https://example.com/with\\nnewline",
-            "https://example.com/with\\rreturn",
-            "https://example.com/with\\x7fdel",
+            "https://example.com/with\tTab",
+            "https://example.com/with\nnewline",
+            "https://example.com/with\rreturn",
+            "https://example.com/with\x7fdel",
         ):
             with self.subTest(url=repr(url)):
                 with self.assertRaises(ShortFormError):
