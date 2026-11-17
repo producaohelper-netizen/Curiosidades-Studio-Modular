@@ -42,6 +42,8 @@ def validate_asset_manifest(manifest: dict, image_paths: list[str]) -> dict:
             raise AssetRightsError("Autoria obrigatória")
         if not isinstance(source, str) or not source.strip():
             raise AssetRightsError("Origem da imagem obrigatória")
+        if any(ch.isspace() or ord(ch) < 32 or ord(ch) == 127 for ch in source):
+            raise AssetRightsError("URL de origem contém espaços ou caracteres de controle")
         try:
             parsed = urlsplit(source)
             hostname = parsed.hostname
