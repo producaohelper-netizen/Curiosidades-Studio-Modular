@@ -91,6 +91,8 @@ def validate_reel(payload: dict) -> dict:
             for k in ("title", "url", "publisher")
         ):
             raise ShortFormError("Fonte sem título, endereço ou responsável")
+        if any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in source["url"]):
+            raise ShortFormError("URL de fonte contém espaços ou caracteres de controle")
         if not re.match(r"^https?://", source["url"]):
             raise ShortFormError("Fonte deve possuir URL HTTP(S)")
     if len({s["url"].strip().lower() for s in sources}) < 2:
