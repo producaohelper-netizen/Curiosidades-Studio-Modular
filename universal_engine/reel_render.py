@@ -63,8 +63,13 @@ def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
             for frame_index in range(math.ceil(duration * fps)):
                 now = frame_index / fps
                 selected = next((i for i, cue in enumerate(cues)
-                                 if cue["start"] <= now < cue["end"]), len(cues)-1)
-                elapsed = now - cues[selected]["start"]
+                                 if cue["start"] <= now < cue["end"]), None)
+                if selected is None:
+                    # During a narration gap, retain the preceding visual instead
+                    # of jumping to the final section or using negative elapsed time.
+                    selected = max(0, next((i for i in range(len(cues) - 1, -1, -1)
+                                            if cues[i]["end"] <= now), 0))
+                elapsed = max(0.0, now - cues[selected]["start"])
                 image_number = image_index(elapsed, len(backgrounds[selected]))
                 visual = reframe(backgrounds[selected][image_number], elapsed)
                 caption = (caption_at(cues[selected]["text"], elapsed,
