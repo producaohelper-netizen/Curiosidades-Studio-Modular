@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 from PIL import Image
 from .reel_captions import caption_frame
-from .reel_caption_timing import validate_cues
+from .reel_caption_timing import validate_cues, active_caption
 from .reel_visual_beats import reframe
 from .reel_visual_sequence import normalize_images, image_index
 from .reel_caption_cards import caption_at
@@ -67,8 +67,9 @@ def render_reel(audio_path, cues, images, output, *, fps=24, size=(1080, 1920),
                 elapsed = now - cues[selected]["start"]
                 image_number = image_index(elapsed, len(backgrounds[selected]))
                 visual = reframe(backgrounds[selected][image_number], elapsed)
-                caption = caption_at(cues[selected]["text"], elapsed,
-                                     cues[selected]["end"] - cues[selected]["start"])
+                caption = (caption_at(cues[selected]["text"], elapsed,
+                                      cues[selected]["end"] - cues[selected]["start"])
+                           if active_caption(cues, now) else "")
                 frame = caption_frame(visual, caption)
                 process.stdin.write(frame.tobytes())
             process.stdin.close()
