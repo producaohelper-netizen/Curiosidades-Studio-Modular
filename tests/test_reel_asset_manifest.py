@@ -57,6 +57,14 @@ class AssetManifestTests(unittest.TestCase):
         self.assertFalse(result["rights_independently_verified"])
         self.assertFalse(result["publication_approved"])
 
+    def test_whitespace_and_control_characters_in_source_rejected(self):
+        for source in ("https://commons.wikimedia.org/a b", "https://commons.wikimedia.org/a\n", "https://commons.wikimedia.org/a\t", "https://commons.wikimedia.org/a\x7f"):
+            with self.subTest(source=repr(source)):
+                data = manifest()
+                data["assets"][0]["source_url"] = source
+                with self.assertRaises(AssetRightsError):
+                    validate_asset_manifest(data, ["gancho.png", "contexto.png"])
+
     def test_untrusted_origin_rejected(self):
         data = manifest()
         data["assets"][0]["source_url"] = "file:///private/image.png"
