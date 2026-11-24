@@ -1,0 +1,26 @@
+name: Gerar Shorts - Buraco Negro CGI 3D
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - render_cgi.py
+      - .github/workflows/cgi.yml
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core blender xvfb
+      - run: pip install numpy scipy edge-tts
+      - run: xvfb-run -a python render_cgi.py
+      - run: ffprobe -v error -show_entries format=duration:stream=width,height -of json buraco-negro-cgi.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: buraco-negro-cgi
+          path: buraco-negro-cgi.mp4
