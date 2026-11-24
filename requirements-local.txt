@@ -1,7 +1,0 @@
-# Bibliotecas usadas pelo motor local; modelos e ComfyUI são instalados separadamente.
-Pillow>=11,<13
-open_clip_torch
-rembg[cpu]>=2.0.80
-opencv-python-headless
-# Piper é um binário separado com modelo pt_BR; não inclui pesos aqui.
-# ComfyUI precisa estar instalado e rodando em localhost:8188.
