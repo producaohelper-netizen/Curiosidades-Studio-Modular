@@ -15,7 +15,7 @@ t=np.arange(18*48000)/48000
 music=.10*np.sin(2*np.pi*55*t)+.045*np.sin(2*np.pi*83*t+np.sin(2*np.pi*t/18))+.025*np.sin(2*np.pi*110*t)
 with wave.open("music.wav","wb") as f:
     f.setparams((1,2,48000,0,"NONE","not compressed")); f.writeframes((music*32767).astype("<i2").tobytes())
-run("blender","-b","-t","4","--python-exit-code","1","-P","cgi.py")
+assert all((Path("frames")/f"{i:04d}.png").is_file() for i in range(1,541)), "Missing frames"
 run("ffmpeg","-y","-framerate","30","-i","frames/%04d.png","-filter_complex","[0:v]split[base][glow];[glow]gblur=sigma=8[blur];[base][blur]blend=all_mode=screen:all_opacity=0.35","-c:v","libx264","-pix_fmt","yuv420p","silent.mp4")
 def stamp(t): return f"0:00:{t:05.2f}"
 ass="[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,DejaVu Sans,64,&H00FFFFFF,&H0000FFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,5,2,2,100,150,430,1\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"

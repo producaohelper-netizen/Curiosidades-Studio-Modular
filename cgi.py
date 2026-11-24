@@ -1,4 +1,4 @@
-import bpy, math, random
+import bpy, math, random, os
 from mathutils import Vector
 from pathlib import Path
 random.seed(42)
@@ -68,4 +68,9 @@ disk.rotation_euler.z=math.tau*2;disk.keyframe_insert(data_path='rotation_euler'
 # Blender 5 compositor API changed; glow is applied in FFmpeg instead.
 sc.render.film_transparent=False
 sc.render.image_settings.file_format='PNG';Path('frames').mkdir(exist_ok=True);sc.render.filepath=str(Path('frames').resolve())+'/'
+sc.frame_start=int(os.environ.get("FRAME_START","1"))
+sc.frame_end=int(os.environ.get("FRAME_END","540"))
 bpy.ops.render.render(animation=True)
+expected=[Path("frames")/f"{i:04d}.png" for i in range(sc.frame_start,sc.frame_end+1)]
+assert all(p.is_file() and p.stat().st_size>0 for p in expected), "Missing rendered frames"
+

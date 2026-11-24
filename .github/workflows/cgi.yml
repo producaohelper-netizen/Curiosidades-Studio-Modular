@@ -11,18 +11,48 @@ permissions:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        batch: [0, 1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y blender xvfb xauth
+      - run: blender --version
+      - name: Render 90 frames
+        run: |
+          export FRAME_START=$(( ${{ matrix.batch }} * 90 + 1 ))
+          export FRAME_END=$(( FRAME_START + 89 ))
+          xvfb-run -a blender -b -t 4 --python-exit-code 1 -P cgi.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frames-${{ matrix.batch }}
+          path: frames/*.png
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+  assemble:
+    needs: render
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core blender xvfb
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: frames-*
+          path: frames
+          merge-multiple: true
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
       - run: pip install numpy scipy edge-tts
-      - run: blender --version
-      - run: xvfb-run -a python render_cgi.py
+      - run: python render_cgi.py
       - run: ffprobe -v error -show_entries format=duration:stream=width,height -of json buraco-negro-cgi.mp4
       - uses: actions/upload-artifact@v4
         with:
           name: buraco-negro-cgi
           path: buraco-negro-cgi.mp4
+          if-no-files-found: error
