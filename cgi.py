@@ -65,7 +65,7 @@ for f,loc,target in [(1,(0,-12,4),(0,0,0)),(31,(0,-7,2.6),(0,0,0)),(91,(3,-11,4)
     cam.keyframe_insert(data_path='location',frame=f);cam.keyframe_insert(data_path='rotation_euler',frame=f)
 disk.rotation_euler.z=0;disk.keyframe_insert(data_path='rotation_euler',frame=1)
 disk.rotation_euler.z=math.tau*2;disk.keyframe_insert(data_path='rotation_euler',frame=540)
-sc.use_nodes=True
-n=sc.node_tree.nodes;n.clear();a=n.new('CompositorNodeRLayers');g=n.new('CompositorNodeGlare');g.glare_type='FOG_GLOW';g.threshold=1;g.quality='MEDIUM';o=n.new('CompositorNodeComposite');sc.node_tree.links.new(a.outputs['Image'],g.inputs['Image']);sc.node_tree.links.new(g.outputs['Image'],o.inputs['Image'])
+# Blender 5 compositor API changed; glow is applied in FFmpeg instead.
+sc.render.film_transparent=False
 sc.render.image_settings.file_format='PNG';Path('frames').mkdir(exist_ok=True);sc.render.filepath=str(Path('frames').resolve())+'/'
 bpy.ops.render.render(animation=True)
